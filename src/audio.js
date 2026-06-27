@@ -32,7 +32,7 @@ export function loadUiSounds(scene) {
   }
   if (!scene.cache.audio.exists(MENU_BGM_KEY)) scene.load.audio(MENU_BGM_KEY, MENU_BGM_URL);
   for (const key of HIT_SOUND_KEYS) {
-    if (!scene.cache.audio.exists(key)) scene.load.audio(key, `assets/sfx/hit/${key}.wav`);
+    if (!scene.cache.audio.exists(key)) scene.load.audio(key, `assets/sfx/hit/${key}.m4a`);
   }
 }
 

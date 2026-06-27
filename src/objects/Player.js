@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import AiController from './AiController.js';
+import { playHit } from '../audio.js';
 
 const { KeyCodes } = Phaser.Input.Keyboard;
 
@@ -240,6 +241,7 @@ export default class Player {
     this.flashFrames = 4;
     this.sprite.setTintFill(0xffffff);
     this.scene.startHitstop(4);
+    playHit(this.scene); // random KOF '97 impact sound
 
     // Two-layer HP bar: the green layer drops quickly, the red layer trails it.
     this.scene.tweens.add({ targets: this, hpGreen: this.hp, duration: 300 });

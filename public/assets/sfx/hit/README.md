@@ -1,8 +1,9 @@
 # Hit / impact SFX (KOF '97)
 
-Curated impact sounds for the fight scene, renamed from the raw
-`kof97-se/seg01..15.wav` slices (all confirmed to be hit/impact sounds).
+Impact sounds for the fight scene, sliced from `42.S.E. Collection.flac` of the
+KOF '97 OST (raw archive kept untouched in `../kof97-se/`).
 
-- `hit-01.wav` .. `hit-15.wav` — impact sounds, played on a connecting hit.
+- `hit-01.m4a` .. `hit-15.m4a` — impact sounds (AAC). A random one plays on
+  each connecting hit (see `playHit` in `src/audio.js`).
 
-The raw archive (`../kof97-se/`) is kept untouched as the source of truth.
+AAC/m4a is used to match the other in-game audio and Phaser's WebAudio decoder.

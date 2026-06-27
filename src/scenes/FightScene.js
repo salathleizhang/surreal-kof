@@ -48,6 +48,8 @@ export default class FightScene extends Phaser.Scene {
     this.timeLeft = ROUND_TIME_MS;
     this.hitstop = 0; // frames left to freeze the action after a hit
     this.gameOver = false; // set once a fighter is KO'd; freezes input + clock
+    this.koShown = false; // becomes true once the "K.O." has been revealed
+    this.koWait = 0; // ms waited (post-KO) for the HP trails to finish draining
     this.createDustTexture();
     this.createHud();
 
@@ -230,9 +232,12 @@ export default class FightScene extends Phaser.Scene {
     }
 
     // Round decided: keep the fighters' animations ticking (death pose / idle)
-    // but the clock and input stay frozen while "KO" is on screen.
+    // and keep redrawing the HUD so the HP bar's red trail finishes draining to
+    // zero. Only the clock and input stay frozen while the KO plays out.
     if (this.gameOver) {
       for (const player of this.players) player.update(timedelta);
+      this.updateHud();
+      this.updateKoReveal(timedelta);
       return;
     }
 
@@ -249,16 +254,39 @@ export default class FightScene extends Phaser.Scene {
     this.checkKo();
   }
 
-  // End the round as soon as either fighter drops. Shows the big "KO", then
-  // invites the player to press any key to return to the title screen.
+  // Freeze the fight the moment either fighter drops. The "K.O." itself is held
+  // back (see updateKoReveal) until the HP bars have visibly drained.
   checkKo() {
     if (this.gameOver) return;
     if (!this.players.some((p) => p.status === STATUS.DEATH)) return;
 
     this.gameOver = true;
+    this.koWait = 0;
     for (const player of this.players) player.vx = 0; // stop the winner mid-stride
+  }
 
+  // Reveal the "K.O." only once both HP bars (the fast green layer and the
+  // trailing red layer) have caught up to the real hp — otherwise the round
+  // reads as ending while a fighter still appears to have health left. A safety
+  // cap guarantees it shows even if a tween never quite settles.
+  updateKoReveal(timedelta) {
+    if (this.koShown) return;
+
+    this.koWait += timedelta;
+    const settled = this.players.every(
+      (p) => Math.abs(p.hpRed - p.hp) < 0.5 && Math.abs(p.hpGreen - p.hp) < 0.5,
+    );
+    if (!settled && this.koWait < 1500) return;
+
+    this.koShown = true;
+    this.showKo();
+  }
+
+  // The big "K.O." slam, followed by the "press any key" prompt that returns to
+  // the title screen.
+  showKo() {
     const { width, height } = this.scale;
+
     const ko = this.add
       .text(width / 2, height / 2, 'K.O.', {
         fontFamily: PIXEL_FONT,
@@ -284,7 +312,7 @@ export default class FightScene extends Phaser.Scene {
     });
 
     // After a beat, offer the "press any key" prompt and arm the return.
-    this.time.delayedCall(1400, () => {
+    this.time.delayedCall(800, () => {
       const hint = this.add
         .text(width / 2, height / 2 + 120, 'PRESS ANY KEY', {
           fontFamily: PIXEL_FONT,

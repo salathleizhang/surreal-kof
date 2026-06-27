@@ -3,29 +3,36 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>kof</title>
-    <link rel="stylesheet" href="/static/css/base.css">
-    <script src="https://cdn.acwing.com/static/jquery/js/jquery-3.3.1.min.js"></script>
+    <title>King of Fighters — Phaser 3</title>
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        #game {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Keep the Phaser canvas crisp when the pixel art is scaled up. */
+        #game canvas {
+            image-rendering: pixelated;
+        }
+    </style>
 </head>
 
 <body>
-    <!-- Let JS index to the window that renders the game -->
-    <div id="kof"></div>
-    <!-- Put in game_map -->
-    <!-- <div class="kof-head">
-            <div class="kof-head-hp-0"></div>
-            <div class="kof-head-timer"></div>
-            <div class="kof-head-hp-1"></div>
-        </div> -->
-
-    <script type="module">
-        import { KOF } from '/static/js/base.js';
-
-        // Generate kof object and pass in id
-        let kof = new KOF('kof');
-    </script>
+    <div id="game"></div>
+    <script type="module" src="/src/main.js"></script>
 </body>
 
 </html>

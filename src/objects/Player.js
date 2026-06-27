@@ -1,0 +1,249 @@
+import Phaser from 'phaser';
+
+const { KeyCodes } = Phaser.Input.Keyboard;
+
+// Per-player keyboard layouts (two players share one keyboard).
+const KEY_LAYOUTS = [
+  { up: KeyCodes.W, left: KeyCodes.A, right: KeyCodes.D, attack: KeyCodes.SPACE },
+  { up: KeyCodes.UP, left: KeyCodes.LEFT, right: KeyCodes.RIGHT, attack: KeyCodes.ENTER },
+];
+
+// Finite-state machine states:
+// 0: idle, 1: forward, 2: backward, 3: jump, 4: attack, 5: be hit, 6: death
+export const STATUS = {
+  IDLE: 0,
+  MOVE: 1,
+  BACKWARD: 2,
+  JUMP: 3,
+  ATTACK: 4,
+  HIT: 5,
+  DEATH: 6,
+};
+
+// Overall character size multiplier. The original art/hitboxes were tuned at
+// 1.0 (sprite scale 2, 120x200 hitbox); bump this to make both fighters bigger
+// while keeping art, hitboxes, punch reach and the floor line in proportion.
+export const CHARACTER_SCALE = 1.6;
+
+// Y coordinate of the floor the fighters stand on (bottom of the hitbox).
+const FLOOR_Y = 650;
+
+export default class Player {
+  constructor(scene, info) {
+    this.scene = scene;
+
+    this.id = info.id;
+    this.x = info.x; // logical top-left of the hitbox
+    this.y = info.y;
+    this.width = info.width * CHARACTER_SCALE;
+    this.height = info.height * CHARACTER_SCALE;
+
+    // Hitbox bottom rests on the floor, so taller fighters start higher up.
+    this.groundY = FLOOR_Y - this.height;
+
+    this.direction = 1; // facing right = 1, facing left = -1
+
+    // Current / initial velocities (px per second).
+    this.vx = 0;
+    this.vy = 0;
+    this.speedx = 400;
+    this.speedy = -1000; // jump impulse (upward, so negative)
+
+    // Per-frame gravity step, matching the original ~60fps tuning.
+    this.gravity = 50;
+
+    // Falls in from the top of the screen, so it starts in the jump state.
+    this.status = STATUS.JUMP;
+
+    // status -> { frame_cnt, frame_rate, offset_y, scale }; filled by subclass.
+    this.animations = new Map();
+    this.texturePrefix = info.texturePrefix;
+
+    this.frame_current_cnt = 0; // counts frames the current status has lasted
+
+    // hp drives the death check; hpGreen / hpRed drive the two-layer HUD bar.
+    this.hp = 100;
+    this.hpGreen = 100;
+    this.hpRed = 100;
+
+    this.keys = scene.input.keyboard.addKeys(KEY_LAYOUTS[this.id]);
+
+    // One sprite per player; texture is swapped every frame in render().
+    // Textures are registered by the PreloadScene before players are created.
+    this.sprite = scene.add.image(this.x, this.y, `${this.texturePrefix}-0-0`);
+    this.sprite.setOrigin(0, 0);
+    this.sprite.setDepth(10);
+
+    this.timedelta = 0;
+  }
+
+  update(timedelta) {
+    this.timedelta = timedelta;
+    this.update_control();
+    this.update_move();
+    this.update_direction();
+    this.update_attack();
+    this.render();
+  }
+
+  update_control() {
+    const { up, left, right, attack } = this.keys;
+    const w = up.isDown;
+    const a = left.isDown;
+    const d = right.isDown;
+    const space = attack.isDown;
+
+    // State transitions are only allowed from idle / moving.
+    if (this.status === STATUS.IDLE || this.status === STATUS.MOVE) {
+      if (space) {
+        this.status = STATUS.ATTACK;
+        this.vx = 0;
+        this.frame_current_cnt = 0;
+      } else if (w) {
+        if (d) this.vx = this.speedx; // 45-degree forward jump
+        else if (a) this.vx = -this.speedx;
+        else this.vx = 0;
+        this.vy = this.speedy;
+        this.status = STATUS.JUMP;
+        this.frame_current_cnt = 0;
+      } else if (d) {
+        this.vx = this.speedx;
+        this.status = STATUS.MOVE;
+      } else if (a) {
+        this.vx = -this.speedx;
+        this.status = STATUS.MOVE; // backward is also status 1 (rendered as 2)
+      } else {
+        this.vx = 0;
+        this.status = STATUS.IDLE;
+      }
+    }
+  }
+
+  update_move() {
+    this.vy += this.gravity;
+
+    this.x += (this.vx * this.timedelta) / 1000;
+    this.y += (this.vy * this.timedelta) / 1000;
+
+    let [a, b] = this.scene.players;
+    if (a !== this) [a, b] = [b, a]; // a pushes b
+
+    const r1 = { x1: a.x, y1: a.y, x2: a.x + a.width, y2: a.y + a.height };
+    const r2 = { x1: b.x, y1: b.y, x2: b.x + b.width, y2: b.y + b.height };
+
+    // Mutual push on collision (no push while the opponent is dead).
+    if (this.is_collision(r1, r2) && b.status !== STATUS.DEATH) {
+      b.x += (this.vx * this.timedelta) / 1000 / 2;
+      b.y += (this.vy * this.timedelta) / 1000 / 2;
+      a.x -= (this.vx * this.timedelta) / 1000 / 2;
+      a.y -= (this.vy * this.timedelta) / 1000 / 2;
+
+      // Landing on the opponent should not leave us stuck mid-air.
+      if (this.status === STATUS.JUMP) this.status = STATUS.IDLE;
+    }
+
+    // Land on the ground.
+    if (this.y > this.groundY) {
+      this.y = this.groundY;
+      this.vy = 0;
+      // Hit / death animations keep playing after landing; only jump resets.
+      if (this.status === STATUS.JUMP) this.status = STATUS.IDLE;
+    }
+
+    // Keep the character inside the stage.
+    const stageWidth = this.scene.scale.width;
+    if (this.x < 0) this.x = 0;
+    else if (this.x + this.width > stageWidth) this.x = stageWidth - this.width;
+  }
+
+  // Keep both players facing each other.
+  update_direction() {
+    if (this.status === STATUS.DEATH) return;
+    const you = this.scene.players[1 - this.id];
+    if (!you) return;
+    this.direction = this.x < you.x ? 1 : -1;
+  }
+
+  // Axis-Aligned Bounding Box overlap test.
+  is_collision(r1, r2) {
+    if (Math.max(r1.x1, r2.x1) > Math.min(r1.x2, r2.x2)) return false;
+    if (Math.max(r1.y1, r2.y1) > Math.min(r1.y2, r2.y2)) return false;
+    return true;
+  }
+
+  // The fist is extended around frame 18 of the attack GIF (image index 3).
+  update_attack() {
+    if (this.status === STATUS.ATTACK && this.frame_current_cnt === 18) {
+      const you = this.scene.players[1 - this.id];
+
+      const reach = 100 * CHARACTER_SCALE; // how far the fist extends past the hitbox
+      const top = this.y + 40 * CHARACTER_SCALE;
+      const bottom = top + 20 * CHARACTER_SCALE;
+
+      let r1;
+      if (this.direction > 0) {
+        r1 = { x1: this.x + this.width, y1: top, x2: this.x + this.width + reach, y2: bottom };
+      } else {
+        r1 = { x1: this.x - reach, y1: top, x2: this.x, y2: bottom };
+      }
+      const r2 = { x1: you.x, y1: you.y, x2: you.x + you.width, y2: you.y + you.height };
+
+      if (this.is_collision(r1, r2)) you.is_attack();
+    }
+  }
+
+  // Called on the player that just got hit.
+  is_attack() {
+    if (this.status === STATUS.DEATH) return;
+
+    this.status = STATUS.HIT;
+    this.frame_current_cnt = 0;
+    this.hp = Math.max(this.hp - 20, 0);
+
+    // Two-layer HP bar: the green layer drops quickly, the red layer trails it.
+    this.scene.tweens.add({ targets: this, hpGreen: this.hp, duration: 300 });
+    this.scene.tweens.add({ targets: this, hpRed: this.hp, duration: 600 });
+
+    if (this.hp <= 0) {
+      this.status = STATUS.DEATH;
+      this.frame_current_cnt = 0;
+      this.vx = 0;
+    }
+  }
+
+  render() {
+    let status = this.status;
+    // Forward and backward share status 1 but use different art.
+    if (this.status === STATUS.MOVE && this.direction * this.vx < 0) status = STATUS.BACKWARD;
+
+    const obj = this.animations.get(status);
+    if (obj && obj.frame_cnt > 0) {
+      const k = Math.floor(this.frame_current_cnt / obj.frame_rate) % obj.frame_cnt;
+      const key = `${this.texturePrefix}-${status}-${k}`;
+
+      this.sprite.setVisible(true);
+      this.sprite.setTexture(key);
+      this.sprite.y = this.y + obj.offset_y;
+
+      if (this.direction > 0) {
+        this.sprite.setScale(obj.scale, obj.scale);
+        this.sprite.x = this.x;
+      } else {
+        // Mirror around the right edge of the hitbox (origin stays top-left, so
+        // a negative x-scale draws the art leftward from the hitbox's right side).
+        this.sprite.setScale(-obj.scale, obj.scale);
+        this.sprite.x = this.x + this.width;
+      }
+
+      // Attack / hit / death play once, then idle (death freezes on last frame).
+      if (status === STATUS.ATTACK || status === STATUS.HIT || status === STATUS.DEATH) {
+        if (this.frame_current_cnt === obj.frame_rate * (obj.frame_cnt - 1)) {
+          if (status === STATUS.DEATH) this.frame_current_cnt -= 1;
+          else this.status = STATUS.IDLE;
+        }
+      }
+    }
+
+    this.frame_current_cnt += 1;
+  }
+}

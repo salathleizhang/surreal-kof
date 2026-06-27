@@ -1,5 +1,8 @@
 import Phaser from 'phaser';
 import { CHARACTERS, SELECT_GRID } from '../objects/roster.js';
+import { PIXEL_FONT, PIXEL_FONT_CN } from '../fonts.js';
+import { setVerticalGradient } from '../utils/text.js';
+import { playUi } from '../audio.js';
 
 const { JustDown } = Phaser.Input.Keyboard;
 const { KeyCodes } = Phaser.Input.Keyboard;
@@ -18,7 +21,7 @@ const KEY_LAYOUTS = [
 ];
 
 const CURSOR_COLORS = [0xff3030, 0x3399ff]; // 1P red, 2P blue
-const CN_FONT = '"PingFang SC", "Microsoft YaHei", sans-serif';
+const CN_FONT = PIXEL_FONT_CN; // pixel font for Latin/digits, CJK fallback for Chinese
 
 // Compact center grid (the big standing art lives on the screen edges instead
 // of in bottom panels).
@@ -40,17 +43,18 @@ export default class SelectScene extends Phaser.Scene {
       .setDepth(0)
       .setTint(0x335577);
 
-    this.add
+    const title = this.add
       .text(width / 2, 36, '角色选择', {
         fontFamily: CN_FONT,
         fontSize: '52px',
         fontStyle: 'bold',
-        color: '#7fffd4',
         stroke: '#10324a',
         strokeThickness: 8,
       })
       .setOrigin(0.5, 0)
       .setDepth(5);
+    // Bright aqua fading into a deeper teal.
+    setVerticalGradient(title, ['#d6fff4', '#7fffd4', '#1f9c84']);
 
     this.buildSideFigures();
     this.buildGrid();
@@ -70,7 +74,7 @@ export default class SelectScene extends Phaser.Scene {
     // Small "1P"/"2P" tab that rides above each cursor.
     this.cursorTags = this.p.map((_, id) => this.add
       .text(0, 0, `${id + 1}P`, {
-        fontFamily: 'Impact, monospace',
+        fontFamily: PIXEL_FONT,
         fontSize: '20px',
         fontStyle: 'bold',
         color: '#ffffff',
@@ -121,8 +125,9 @@ export default class SelectScene extends Phaser.Scene {
       { boxX: width - boxW, side: 1 },
     ].map((cfg, id) => {
       const flip = id === 1; // right-side figure faces left
+      const homeX = cfg.boxX + boxW / 2;
       const figure = this.add
-        .image(cfg.boxX + boxW / 2, boxY + boxH, 'kyo-0-0')
+        .image(homeX, boxY + boxH, 'kyo-0-0')
         .setOrigin(0.5, 1)
         .setDepth(3);
 
@@ -140,18 +145,20 @@ export default class SelectScene extends Phaser.Scene {
 
       const status = this.add
         .text(cfg.boxX + boxW / 2, boxY + 30, '', {
-          fontFamily: 'Impact, monospace',
+          fontFamily: PIXEL_FONT,
           fontSize: '54px',
           fontStyle: 'bold',
-          color: '#39ff6a',
           stroke: '#003311',
           strokeThickness: 6,
         })
         .setOrigin(0.5)
         .setDepth(9);
+      // Empty until confirmed; the gradient is keyed off the font size so it
+      // survives the later setText('OK!').
+      setVerticalGradient(status, ['#c6ffd6', '#39ff6a', '#11a83f']);
 
       return {
-        figure, name, status, boxW, boxH, flip,
+        figure, name, status, boxW, boxH, flip, homeX,
       };
     });
   }
@@ -185,19 +192,43 @@ export default class SelectScene extends Phaser.Scene {
     return player.row * SELECT_GRID.cols + player.col;
   }
 
-  // Update a side figure to the fighter the player is hovering / has locked in.
+  // Snap a side figure to the hovered fighter (texture, scale, name) with no
+  // animation — used on first paint and after a confirm/cancel.
   refreshFigure(id) {
-    const player = this.p[id];
     const fig = this.figures[id];
-    const char = CHARACTERS[this.cells[this.cellIndex(player)].charKey];
+    this.tweens.killTweensOf(fig.figure);
+    fig.figure.x = fig.homeX;
+    this.applyFigureTexture(id);
+    fig.status.setText(this.p[id].confirmed ? 'OK!' : '');
+  }
+
+  applyFigureTexture(id) {
+    const fig = this.figures[id];
+    const char = CHARACTERS[this.cells[this.cellIndex(this.p[id])].charKey];
 
     fig.figure.setTexture(char.portrait);
     const src = this.textures.get(char.portrait).getSourceImage();
     const scale = Math.min(fig.boxW / src.width, fig.boxH / src.height);
     fig.figure.setScale(fig.flip ? -scale : scale, scale);
-
     fig.name.setText(char.cn || char.name);
-    fig.status.setText(player.confirmed ? 'OK!' : '');
+  }
+
+  // Switching characters: slide the figure left, swap to the newly hovered
+  // fighter at the far point, then slide back to its home position.
+  swapFigure(id) {
+    const fig = this.figures[id];
+    this.tweens.killTweensOf(fig.figure);
+    fig.figure.x = fig.homeX;
+    const dir = id === 0 ? -1 : 1; // 1P slides left, 2P slides right
+    this.tweens.add({
+      targets: fig.figure,
+      x: fig.homeX + dir * 240,
+      duration: 150,
+      yoyo: true,
+      ease: 'Quad.inOut',
+      onYoyo: () => this.applyFigureTexture(id),
+      onComplete: () => { fig.figure.x = fig.homeX; },
+    });
   }
 
   drawCursors() {
@@ -246,42 +277,50 @@ export default class SelectScene extends Phaser.Scene {
       if (JustDown(k.cancel)) {
         player.confirmed = false;
         this.refreshFigure(id);
+        playUi(this, 'cancel');
         changed = true;
       }
       return changed;
     }
 
     const { cols, rows } = SELECT_GRID;
-    if (JustDown(k.left) && player.col > 0) { player.col -= 1; changed = true; }
-    if (JustDown(k.right) && player.col < cols - 1) { player.col += 1; changed = true; }
-    if (JustDown(k.up) && player.row > 0) { player.row -= 1; changed = true; }
-    if (JustDown(k.down) && player.row < rows - 1) { player.row += 1; changed = true; }
+    let moved = false;
+    if (JustDown(k.left) && player.col > 0) { player.col -= 1; moved = true; }
+    if (JustDown(k.right) && player.col < cols - 1) { player.col += 1; moved = true; }
+    if (JustDown(k.up) && player.row > 0) { player.row -= 1; moved = true; }
+    if (JustDown(k.down) && player.row < rows - 1) { player.row += 1; moved = true; }
+
+    // Switching to a new fighter plays the slide-swap animation.
+    if (moved) { this.swapFigure(id); playUi(this, 'cursor'); changed = true; }
 
     if (JustDown(k.confirm)) {
       player.confirmed = true;
+      this.refreshFigure(id); // snap home + show OK!
+      playUi(this, 'select');
       changed = true;
     }
 
-    if (changed) this.refreshFigure(id);
     return changed;
   }
 
   startFight() {
     this.starting = true;
+    playUi(this, 'start');
 
     const selections = this.p.map((player) => this.cells[this.cellIndex(player)].charKey);
 
     const flash = this.add
       .text(this.scale.width / 2, this.scale.height / 2, 'FIGHT!', {
-        fontFamily: 'Impact, monospace',
+        fontFamily: PIXEL_FONT,
         fontSize: '120px',
         fontStyle: 'bold',
-        color: '#ffffff',
         stroke: '#c01b1b',
         strokeThickness: 14,
       })
       .setOrigin(0.5)
       .setDepth(30);
+    // White-hot top fading to fiery red-orange.
+    setVerticalGradient(flash, ['#ffffff', '#ffd23f', '#ff5a1f']);
     flash.setScale(0.5);
     this.tweens.add({ targets: flash, scale: 1, duration: 350, ease: 'Back.out' });
 

@@ -5,10 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "local-api": "node server/local-api.mjs",
     "build": "vite build",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fontsource/press-start-2p": "^5.2.7",
     "phaser": "^3.80.1"
   },
   "devDependencies": {

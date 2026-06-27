@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { STATUS } from '../objects/Player.js';
 import { CHARACTERS, DEFAULT_CHARACTER } from '../objects/roster.js';
+import { PIXEL_FONT } from '../fonts.js';
 
 const ROUND_TIME_MS = 60000;
 
@@ -53,8 +54,8 @@ export default class FightScene extends Phaser.Scene {
 
     this.timerText = this.add
       .text(width / 2, BAR_Y + BAR_HEIGHT / 2, '60', {
-        fontFamily: 'monospace',
-        fontSize: '30px',
+        fontFamily: PIXEL_FONT,
+        fontSize: '22px',
         fontStyle: 'bold',
         color: '#ffffff',
         backgroundColor: '#ffa500',

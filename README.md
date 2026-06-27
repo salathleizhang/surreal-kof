@@ -54,6 +54,21 @@ A horizontal fighting game built with the **Phaser 3** game engine and JavaScrip
   speed, gravity, etc.) it gives the character seven smooth animations.
 - 0: idle, 1: forward, 2: backward, 3: jump, 4: attack, 5: be hit, 6: death
 
+### UI sound effects
+
+- The menus play short system SFX: `cursor` (move/switch fighter), `select`
+  (confirm), `cancel` (un-confirm) and `start` (leave title / FIGHT!).
+- `src/audio.js` is the single source of truth — `loadUiSounds()` queues them in
+  `PreloadScene` and `playUi(scene, name)` plays them. The browser only unlocks
+  audio after a user gesture, so the first sound you hear is `start` on the
+  title screen.
+- The bundled files in `public/assets/sounds/ui/` are placeholder beeps. To use
+  real King of Fighters system rips (or any UI pack), drop your `.wav` files in
+  over them keeping the same filenames — no code change needed. Good sources:
+  [The Sounds Resource (KOF XV)](https://sounds.spriters-resource.com/pc_computer/thekingoffightersxv/),
+  [爱给网 选择角色](https://www.aigei.com/sound/class/xuan_ze_ji/),
+  [OpenGameArt GUI sounds](https://opengameart.org/content/gui-sound-effects).
+
 ### Collision Detection
 
 - Axis-Aligned Bounding Box collision detection drives attack, hit and death.
@@ -68,6 +83,49 @@ npm install      # install Phaser 3 + Vite
 npm run dev      # start the dev server (opens the game in your browser)
 npm run build    # produce a production build in dist/
 npm run preview  # preview the production build
+```
+
+## Local-only MuleRun Studio API
+
+Start a local HTTP API wrapper for `mulerun studio`:
+
+```bash
+npm run local-api
+```
+
+The API only listens on `127.0.0.1` by default and uses the existing MuleRun
+CLI login/configuration on this machine.
+
+Available routes:
+
+```bash
+curl http://127.0.0.1:8787/health
+
+curl -X POST http://127.0.0.1:8787/api/chatgpt-image2 \
+  -H 'content-type: application/json' \
+  -d '{"prompt":"A cinematic robot panda", "size":"1024x1024"}'
+
+curl -X POST http://127.0.0.1:8787/api/nanobanana-pro \
+  -H 'content-type: application/json' \
+  -d '{"prompt":"A cinematic robot panda", "aspectRatio":"1:1", "resolution":"1K"}'
+
+curl -X POST http://127.0.0.1:8787/api/seedence \
+  -H 'content-type: application/json' \
+  -d '{"prompt":"A cinematic robot panda walking in rain", "duration":5, "resolution":"720p"}'
+```
+
+You can also call any MuleRun Studio endpoint directly:
+
+```bash
+curl -X POST http://127.0.0.1:8787/api/run \
+  -H 'content-type: application/json' \
+  -d '{"endpoint":"google/nano-banana-pro/generation", "prompt":"A red sports car"}'
+```
+
+Optional settings:
+
+```bash
+LOCAL_API_PORT=8787 LOCAL_API_HOST=127.0.0.1 npm run local-api
 ```
 
 ## Future scope

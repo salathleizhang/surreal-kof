@@ -25,6 +25,7 @@ export default class PreloadScene extends Phaser.Scene {
     // UI sounds go through Phaser's standard loader so they're decoded into the
     // global audio cache before any menu scene runs. (The GIF art is decoded
     // separately in create().)
+    this.load.image('select-bg', 'assets/background/select-bg.png');
     loadUiSounds(this);
   }
 

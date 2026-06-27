@@ -20,7 +20,8 @@ const KEY_LAYOUTS = [
   },
 ];
 
-const CURSOR_COLORS = [0xff3030, 0x3399ff]; // 1P red, 2P blue
+const CURSOR_COLORS = [0xff3030, 0x3399ff]; // 1P red, 2P blue — used for tags/fill
+const CURSOR_BORDER = 0xffffff; // white selection border (KOF-style)
 const CN_FONT = PIXEL_FONT_CN; // pixel font for Latin/digits, CJK fallback for Chinese
 
 // Compact center grid (the big standing art lives on the screen edges instead
@@ -40,11 +41,10 @@ export default class SelectScene extends Phaser.Scene {
     this.mode = (data && data.mode) || 'versus';
 
     this.add
-      .image(0, 0, 'bg-0')
+      .image(0, 0, 'select-bg')
       .setOrigin(0, 0)
       .setDisplaySize(width, height)
-      .setDepth(0)
-      .setTint(0x335577);
+      .setDepth(0);
 
     const title = this.add
       .text(width / 2, 36, '角色选择', {
@@ -255,7 +255,7 @@ export default class SelectScene extends Phaser.Scene {
       // they hover the same cell.
       const inset = id === 0 ? 0 : 4;
       const alpha = player.confirmed ? 1 : 0.9;
-      g.lineStyle(4, CURSOR_COLORS[id], alpha);
+      g.lineStyle(4, CURSOR_BORDER, alpha);
       g.strokeRect(cell.x - inset, cell.y - inset, CELL + inset * 2, CELL + inset * 2);
 
       if (player.confirmed) {

@@ -62,9 +62,10 @@ A horizontal fighting game built with the **Phaser 3** game engine and JavaScrip
   `PreloadScene` and `playUi(scene, name)` plays them. The browser only unlocks
   audio after a user gesture, so the first sound you hear is `start` on the
   title screen.
-- The bundled files in `public/assets/sounds/ui/` are placeholder beeps. To use
-  real King of Fighters system rips (or any UI pack), drop your `.wav` files in
-  over them keeping the same filenames — no code change needed. Good sources:
+- `cursor`/`select`/`start` in `public/assets/sounds/ui/` are real King of
+  Fighters '97/'98 menu rips; `cancel` is a synthesised placeholder (no clean
+  KOF cancel rip was freely available). To swap any of them, drop a new file in
+  and point its entry in `src/audio.js` at it. Good sources:
   [The Sounds Resource (KOF XV)](https://sounds.spriters-resource.com/pc_computer/thekingoffightersxv/),
   [爱给网 选择角色](https://www.aigei.com/sound/class/xuan_ze_ji/),
   [OpenGameArt GUI sounds](https://opengameart.org/content/gui-sound-effects).

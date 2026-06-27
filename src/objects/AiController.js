@@ -4,12 +4,12 @@ import { STATUS, CHARACTER_SCALE } from './Player.js';
 // spacing, walks in, strikes when you're in range, baits, and hops back out of
 // the way of your attacks — but with a human-like reaction delay so it is beatable.
 const NORMAL = {
-  reactionMs: 180, // how often the AI re-evaluates the situation
-  attackCooldownMs: 360, // minimum gap between attack attempts (anti-spam)
-  aggression: 0.72, // chance to swing when the opponent is in range
-  defense: 0.65, // chance to evade an attack it has read
-  jumpInChance: 0.16, // chance to hop in while closing distance
-  spacingChance: 0.28, // chance to step back in range to bait a whiff
+  reactionMs: 420, // how often the AI re-evaluates the situation (higher = slower reflexes)
+  attackCooldownMs: 900, // minimum gap between attack attempts (anti-spam)
+  aggression: 0.4, // chance to swing when the opponent is in range
+  defense: 0.4, // chance to evade an attack it has read
+  jumpInChance: 0.1, // chance to hop in while closing distance
+  spacingChance: 0.35, // chance to step back in range to bait a whiff
 };
 
 // Drives a Player the way a second human would: instead of reading the keyboard,

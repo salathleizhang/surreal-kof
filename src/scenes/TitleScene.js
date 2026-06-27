@@ -107,6 +107,8 @@ export default class TitleScene extends Phaser.Scene {
     this.locked = true;
     // The first keypress here is also the gesture that unlocks the browser's
     // audio context, so this is the earliest a sound can actually be heard.
+    // Crisp cursor blip for immediate feedback, then the "Ready? Go!" start cue.
+    playUi(this, 'cursor');
     playUi(this, 'start');
     this.scene.start('select', { mode: MENU[this.selected].mode });
   }

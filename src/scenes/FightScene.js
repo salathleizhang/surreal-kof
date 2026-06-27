@@ -40,7 +40,45 @@ export default class FightScene extends Phaser.Scene {
     });
 
     this.timeLeft = ROUND_TIME_MS;
+    this.hitstop = 0; // frames left to freeze the action after a hit
+    this.createDustTexture();
     this.createHud();
+  }
+
+  // Freeze the whole fight for a few frames so hits land with weight. Stacking
+  // hits take the longer of the two freezes rather than adding up.
+  startHitstop(frames = 4) {
+    this.hitstop = Math.max(this.hitstop, frames);
+  }
+
+  // A soft white dot reused for every dust puff (generated once).
+  createDustTexture() {
+    const g = this.add.graphics();
+    g.fillStyle(0xffffff, 1);
+    g.fillCircle(8, 8, 8);
+    g.generateTexture('dust', 16, 16);
+    g.destroy();
+  }
+
+  // Scatter a handful of dust puffs from a point (feet), drifting up and out.
+  spawnDust(x, y) {
+    const n = 5;
+    for (let i = 0; i < n; i += 1) {
+      const scale = 0.4 + Math.random() * 0.5;
+      const puff = this.add.image(x, y, 'dust').setDepth(8);
+      puff.setTint(0xccbb99).setScale(scale).setAlpha(0.7);
+      const dir = (i / (n - 1) - 0.5) * 2; // spread -1..1 across the feet
+      this.tweens.add({
+        targets: puff,
+        x: x + dir * (40 + Math.random() * 30),
+        y: y - (10 + Math.random() * 25),
+        scale: scale * 1.8,
+        alpha: 0,
+        duration: 350 + Math.random() * 150,
+        ease: 'Quad.easeOut',
+        onComplete: () => puff.destroy(),
+      });
+    }
   }
 
   createHud() {
@@ -104,6 +142,13 @@ export default class FightScene extends Phaser.Scene {
   }
 
   update(_time, delta) {
+    // Hitstop: hold the action (and the frame on screen) frozen for a beat so
+    // the hit reads as impact. Tween-driven FX/HP bars keep animating.
+    if (this.hitstop > 0) {
+      this.hitstop -= 1;
+      return;
+    }
+
     // Guard against huge steps after a tab switch / first frame.
     const timedelta = Math.min(delta, 100);
 

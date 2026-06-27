@@ -83,6 +83,9 @@ export default class Player {
     this.sprite.setDepth(10);
 
     this.timedelta = 0;
+
+    this.flashFrames = 0; // counts down a white hit-flash on the sprite
+    this.ghostTick = 0; // throttles motion afterimages
   }
 
   update(timedelta) {
@@ -124,6 +127,7 @@ export default class Player {
         this.vy = this.speedy;
         this.status = STATUS.JUMP;
         this.frame_current_cnt = 0;
+        this.scene.spawnDust(this.x + this.width / 2, this.y + this.height); // kick up takeoff dust
       } else if (d) {
         this.vx = this.speedx;
         this.status = STATUS.MOVE;
@@ -162,10 +166,14 @@ export default class Player {
 
     // Land on the ground.
     if (this.y > this.groundY) {
+      const wasAirborne = this.status === STATUS.JUMP;
       this.y = this.groundY;
       this.vy = 0;
       // Hit / death animations keep playing after landing; only jump resets.
-      if (this.status === STATUS.JUMP) this.status = STATUS.IDLE;
+      if (wasAirborne) {
+        this.status = STATUS.IDLE;
+        this.scene.spawnDust(this.x + this.width / 2, this.y + this.height); // landing puff
+      }
     }
 
     // Keep the character inside the stage.
@@ -218,6 +226,14 @@ export default class Player {
     this.frame_current_cnt = 0;
     this.hp = Math.max(this.hp - 20, 0);
 
+    // Hit feedback (pure presentation — the 20 damage above is unchanged):
+    // flash the victim solid white and freeze the action for a few frames so the
+    // blow lands with weight. setTintFill here guarantees the flash shows on the
+    // frozen frame regardless of player update order; render() counts it down.
+    this.flashFrames = 4;
+    this.sprite.setTintFill(0xffffff);
+    this.scene.startHitstop(4);
+
     // Two-layer HP bar: the green layer drops quickly, the red layer trails it.
     this.scene.tweens.add({ targets: this, hpGreen: this.hp, duration: 300 });
     this.scene.tweens.add({ targets: this, hpRed: this.hp, duration: 600 });
@@ -253,6 +269,23 @@ export default class Player {
         this.sprite.x = this.x + this.width;
       }
 
+      // Motion afterimages: drop a fading ghost while attacking or moving so
+      // fast actions read as a streak instead of a teleport.
+      this.ghostTick += 1;
+      const moving = Math.abs(this.vx) > 1;
+      if ((this.status === STATUS.ATTACK || moving) && this.ghostTick % 3 === 0) {
+        this.spawnGhost();
+      }
+
+      // Count the white hit-flash down here (skipped during hitstop, so the
+      // flash stays lit through the freeze).
+      if (this.flashFrames > 0) {
+        this.sprite.setTintFill(0xffffff);
+        this.flashFrames -= 1;
+      } else {
+        this.sprite.clearTint();
+      }
+
       // Attack / hit / death play once, then idle (death freezes on last frame).
       if (status === STATUS.ATTACK || status === STATUS.HIT || status === STATUS.DEATH) {
         if (this.frame_current_cnt === obj.frame_rate * (obj.frame_cnt - 1)) {
@@ -263,5 +296,23 @@ export default class Player {
     }
 
     this.frame_current_cnt += 1;
+  }
+
+  // A single fading copy of the current sprite frame, drawn just behind the live
+  // sprite, tinted blue to read as a speed trail.
+  spawnGhost() {
+    const s = this.sprite;
+    const ghost = this.scene.add.image(s.x, s.y, s.texture.key);
+    ghost.setOrigin(0, 0);
+    ghost.setScale(s.scaleX, s.scaleY);
+    ghost.setDepth(9); // just behind the live sprite (depth 10)
+    ghost.setTint(0x66ccff);
+    ghost.setAlpha(0.45);
+    this.scene.tweens.add({
+      targets: ghost,
+      alpha: 0,
+      duration: 220,
+      onComplete: () => ghost.destroy(),
+    });
   }
 }

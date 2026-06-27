@@ -1,14 +1,14 @@
 // Centralised UI / system sound effects (cursor move, confirm, cancel, start).
 //
-// The bundled .wav files are simple placeholder beeps so the menus are audible
-// out of the box. To use real King of Fighters system rips (or any UI pack),
-// drop your files into `public/assets/sounds/ui/` keeping these same filenames
-// and everything keeps working — no code change needed. See README for sources.
+// cursor/select/start are real King of Fighters '97/'98 menu rips; cancel is a
+// synthesised placeholder (no clean KOF cancel rip was freely available). To
+// swap any of these, drop a file into `public/assets/sounds/ui/` and point its
+// entry below at it — no other code change needed. See README for sources.
 export const UI_SOUNDS = {
-  cursor: 'assets/sounds/ui/cursor.wav', // moving the select cursor / switching fighter
-  select: 'assets/sounds/ui/select.wav', // confirming a fighter
-  cancel: 'assets/sounds/ui/cancel.wav', // un-confirming / going back
-  start: 'assets/sounds/ui/start.wav', //  leaving the title / FIGHT!
+  cursor: 'assets/sounds/ui/cursor.mp3', // moving the cursor / switching fighter (KOF '97 rip)
+  select: 'assets/sounds/ui/select.mp3', // confirming a fighter (KOF '98 rip)
+  cancel: 'assets/sounds/ui/cancel.wav', // un-confirming / going back (synth placeholder)
+  start: 'assets/sounds/ui/start.mp3', //  leaving the title / FIGHT! (KOF '97 "Round 1, Ready Go!")
 };
 
 // Queue every UI sound on a scene's loader. Call once from a `preload()`; the

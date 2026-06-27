@@ -273,7 +273,7 @@ export default class Player {
       // fast actions read as a streak instead of a teleport.
       this.ghostTick += 1;
       const moving = Math.abs(this.vx) > 1;
-      if ((this.status === STATUS.ATTACK || moving) && this.ghostTick % 3 === 0) {
+      if ((this.status === STATUS.ATTACK || moving) && this.ghostTick % 4 === 0) {
         this.spawnGhost();
       }
 
@@ -307,11 +307,11 @@ export default class Player {
     ghost.setScale(s.scaleX, s.scaleY);
     ghost.setDepth(9); // just behind the live sprite (depth 10)
     ghost.setTint(0x66ccff);
-    ghost.setAlpha(0.45);
+    ghost.setAlpha(0.28);
     this.scene.tweens.add({
       targets: ghost,
       alpha: 0,
-      duration: 220,
+      duration: 160,
       onComplete: () => ghost.destroy(),
     });
   }

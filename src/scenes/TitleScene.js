@@ -106,10 +106,9 @@ export default class TitleScene extends Phaser.Scene {
   confirm() {
     this.locked = true;
     // The first keypress here is also the gesture that unlocks the browser's
-    // audio context, so this is the earliest a sound can actually be heard.
-    // Crisp cursor blip for immediate feedback, then the "Ready? Go!" start cue.
+    // audio context. Just a crisp cursor blip on confirm — the "Round 1, Ready
+    // Go!" announcer is saved for the fight scene, not the menus.
     playUi(this, 'cursor');
-    playUi(this, 'start');
     this.scene.start('select', { mode: MENU[this.selected].mode });
   }
 

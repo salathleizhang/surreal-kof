@@ -322,7 +322,8 @@ export default class SelectScene extends Phaser.Scene {
 
   startFight() {
     this.starting = true;
-    playUi(this, 'start');
+    // No announcer here — the "Round 1, Ready Go!" cue belongs to the fight
+    // scene, so it doesn't bleed over the select screen / FIGHT! flash.
 
     const selections = this.p.map((player) => this.cells[this.cellIndex(player)].charKey);
 

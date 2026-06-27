@@ -83,6 +83,13 @@ export default class FightScene extends Phaser.Scene {
           .setScale(0.3)
           .setAlpha(0);
 
+        // Top-to-bottom gold gradient fill over the (stroked) glyphs.
+        const grad = label.context.createLinearGradient(0, 0, 0, label.height);
+        grad.addColorStop(0, '#fff7b0');
+        grad.addColorStop(0.5, '#ffcc33');
+        grad.addColorStop(1, '#ff8800');
+        label.setFill(grad);
+
         // Pop in...
         this.tweens.add({
           targets: label,
@@ -102,9 +109,10 @@ export default class FightScene extends Phaser.Scene {
       });
     };
 
-    // "Round 1" first, "Fight!" second, then the round begins at INTRO_MS.
-    flash('Round 1', 0, 1500);
-    flash('Fight!', 2200, 1200);
+    // "Round 1", then "Ready" and "Go" in sequence, then the round begins.
+    flash('Round 1', 0, 1100);
+    flash('Ready', 1400, 700);
+    flash('Go', 2600, 1100);
     this.time.delayedCall(INTRO_MS, () => {
       this.introActive = false;
     });

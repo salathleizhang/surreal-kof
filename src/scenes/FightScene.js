@@ -1,13 +1,12 @@
 import Phaser from 'phaser';
 import { STATUS } from '../objects/Player.js';
 import {
-  CHARACTERS, DEFAULT_CHARACTER, SCENES, DEFAULT_SCENE,
+  getCharacter, DEFAULT_CHARACTER, SCENES, DEFAULT_SCENE,
 } from '../objects/roster.js';
 import { PIXEL_FONT } from '../fonts.js';
 import { playUi, stopMenuBgm } from '../audio.js';
 
 const ROUND_TIME_MS = 60000;
-const BACKGROUND_FRAME_MS = 100;
 // Pre-fight ceremony: hold the action while the "Round 1, Fight!" announcer
 // plays (~4s) before the round goes live.
 const INTRO_MS = 4000;
@@ -27,9 +26,10 @@ export default class FightScene extends Phaser.Scene {
   create(data) {
     const { width, height } = this.scale;
 
-    // The stage chosen on the scene-select screen (key into SCENES); defaults to
-    // the street stage if the fight is launched directly during development.
+    // The stage chosen on the scene-select screen (key into SCENES); falls back
+    // to the configured default if the fight is launched directly in development.
     const scene = SCENES[(data && data.scene)] || SCENES[DEFAULT_SCENE];
+    this.game.canvas.setAttribute('aria-label', `战斗场景：${scene.cn}`);
     this.createBackground(width, height, scene);
 
     // Characters chosen on the select screen (default to Kyo if launched
@@ -46,9 +46,10 @@ export default class FightScene extends Phaser.Scene {
     ];
 
     this.players = spawns.map((spawn) => {
-      const CharCls = (CHARACTERS[selections[spawn.id]] || CHARACTERS[DEFAULT_CHARACTER]).cls;
+      const charKey = selections[spawn.id];
+      const char = getCharacter(charKey) || getCharacter(DEFAULT_CHARACTER);
       const ai = mode === 'single' && spawn.id === 1;
-      return new CharCls(this, { ...spawn, ai });
+      return new char.cls(this, { ...spawn, ai, charKey });
     });
 
     this.timeLeft = ROUND_TIME_MS;
@@ -67,23 +68,9 @@ export default class FightScene extends Phaser.Scene {
   }
 
   createBackground(width, height, scene) {
-    const prefix = scene.bgPrefix;
-    const bg = this.add.image(width / 2, height, `${prefix}-0`).setOrigin(0.5, 1).setDepth(0);
+    const bg = this.add.image(width / 2, height, scene.texture).setOrigin(0.5, 1).setDepth(0);
     const scale = Math.max(width / bg.width, height / bg.height);
     bg.setScale(scale);
-
-    const frameCount = this.registry.get(scene.frameCountKey) || 1;
-    if (frameCount <= 1) return;
-
-    let frame = 0;
-    this.time.addEvent({
-      delay: BACKGROUND_FRAME_MS,
-      loop: true,
-      callback: () => {
-        frame = (frame + 1) % frameCount;
-        bg.setTexture(`${prefix}-${frame}`);
-      },
-    });
   }
 
   // The opening ceremony: freeze the action while the announcer plays, flashing
@@ -288,7 +275,15 @@ export default class FightScene extends Phaser.Scene {
 
     this.gameOver = true;
     this.koWait = 0;
-    for (const player of this.players) player.vx = 0; // stop the winner mid-stride
+    for (const player of this.players) {
+      player.vx = 0; // stop the winner mid-stride
+      // The winner strikes its entrance/victory pose, if it has one (generated
+      // fighters do); the loser is already in its death animation.
+      if (player.status !== STATUS.DEATH && player.animations.has(STATUS.INTRO)) {
+        player.status = STATUS.INTRO;
+        player.frame_current_cnt = 0;
+      }
+    }
   }
 
   // Reveal the "K.O." only once both HP bars (the fast green layer and the

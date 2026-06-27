@@ -86,9 +86,11 @@ npm run build    # produce a production build in dist/
 npm run preview  # preview the production build
 ```
 
-## Local-only MuleRun Studio API
+## Local-only MuleRun API
 
-Start a local HTTP API wrapper for `mulerun studio`:
+Full API docs: [`docs/local-mulerun-api.md`](docs/local-mulerun-api.md)
+
+Start a local HTTP API wrapper for `mulerun studio` and `mulerun code`:
 
 ```bash
 npm run local-api
@@ -101,6 +103,10 @@ Available routes:
 
 ```bash
 curl http://127.0.0.1:8787/health
+
+curl -X POST http://127.0.0.1:8787/api/chat \
+  -H 'content-type: application/json' \
+  -d '{"model":"openai/gpt-5.5", "prompt":"用一句话解释什么是反向代理"}'
 
 curl -X POST http://127.0.0.1:8787/api/chatgpt-image2 \
   -H 'content-type: application/json' \

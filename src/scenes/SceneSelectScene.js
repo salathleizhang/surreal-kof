@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import {
-  CHARACTERS, DEFAULT_CHARACTER, SCENES, SCENE_ORDER, DEFAULT_SCENE,
+  getCharacter, DEFAULT_CHARACTER, SCENES, SCENE_ORDER, DEFAULT_SCENE,
 } from '../objects/roster.js';
 import { PIXEL_FONT, PIXEL_FONT_CN } from '../fonts.js';
 import { setVerticalGradient } from '../utils/text.js';
@@ -144,7 +144,7 @@ export default class SceneSelectScene extends Phaser.Scene {
     const frame = this.add
       .rectangle(0, 0, CARD_W, CARD_H, 0x300a0a, 0.92)
       .setStrokeStyle(3, 0xffffff);
-    this.cardThumb = this.add.image(0, 0, 'bg-0').setOrigin(0.5);
+    this.cardThumb = this.add.image(0, 0, SCENES[DEFAULT_SCENE].texture).setOrigin(0.5);
     this.cardName = this.add
       .text(0, CARD_H / 2 + 14, '', {
         fontFamily: CN_FONT,
@@ -188,7 +188,7 @@ export default class SceneSelectScene extends Phaser.Scene {
     ].map((cfg, id) => {
       const flip = id === 1;
       const homeX = cfg.boxX + boxW / 2;
-      const char = CHARACTERS[this.selections[id]] || CHARACTERS[DEFAULT_CHARACTER];
+      const char = getCharacter(this.selections[id]) || getCharacter(DEFAULT_CHARACTER);
 
       const figure = this.add
         .image(homeX, boxY + boxH, char.portrait)
@@ -235,12 +235,15 @@ export default class SceneSelectScene extends Phaser.Scene {
   // frame, set its name, and update the page indicator.
   applyCard() {
     const scene = SCENES[SCENE_ORDER[this.sceneIndex]];
-    this.cardThumb.setTexture(scene.thumb);
-    const src = this.textures.get(scene.thumb).getSourceImage();
+    this.cardThumb.setTexture(scene.texture);
+    const src = this.textures.get(scene.texture).getSourceImage();
     const s = Math.min((CARD_W - 24) / src.width, (CARD_H - 24) / src.height);
     this.cardThumb.setScale(s);
     this.cardName.setText(scene.cn);
     this.pageText.setText(`${this.sceneIndex + 1} / ${SCENE_ORDER.length}`);
+    this.game.canvas.setAttribute(
+      'aria-label', `场景选择：${scene.cn}（${this.sceneIndex + 1}/${SCENE_ORDER.length}）`,
+    );
   }
 
   // Page-flip: collapse the card vertically (scaleY → 0) while nudging it in the

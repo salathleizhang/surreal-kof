@@ -1,9 +1,15 @@
 import http from 'node:http';
 import { spawn } from 'node:child_process';
+import { mkdtemp, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { startCharacterJob, getJob, listJobs } from './character-pipeline.mjs';
 
 const host = process.env.LOCAL_API_HOST || '127.0.0.1';
 const port = Number(process.env.LOCAL_API_PORT || 8787);
-const maxBodyBytes = 10 * 1024 * 1024;
+const maxBodyBytes = 32 * 1024 * 1024; // base64-encoded upload photos can be a few MB
+const defaultChatModel = process.env.LOCAL_CHAT_MODEL || 'openai/gpt-5.5';
+const defaultChatCwd = process.env.LOCAL_CHAT_CWD || '/var/folders/4q/t5h2g2fs0cz7sz_p4c0my5y40000gn/T/opencode';
 
 const presets = {
   seedence: 'bytedance/seedance-2.0/text-to-video',
@@ -64,9 +70,9 @@ function addParam(args, key, value) {
   args.push(flag, String(value));
 }
 
-function runMuleRun(args) {
+function runMuleRun(args, options = {}) {
   return new Promise((resolve) => {
-    const child = spawn('mulerun', args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn('mulerun', args, { cwd: options.cwd, stdio: ['ignore', 'pipe', 'pipe'] });
     let stdout = '';
     let stderr = '';
 
@@ -126,6 +132,73 @@ async function runStudio(endpoint, body) {
   };
 }
 
+function normalizeMessages(messages) {
+  if (!Array.isArray(messages)) return null;
+
+  return messages
+    .map((message) => {
+      if (!message || typeof message !== 'object') return null;
+      const role = typeof message.role === 'string' ? message.role : 'user';
+      const content = typeof message.content === 'string' ? message.content : '';
+      return content ? `${role}: ${content}` : null;
+    })
+    .filter(Boolean)
+    .join('\n\n');
+}
+
+async function runChat(body) {
+  const prompt = typeof body.prompt === 'string' ? body.prompt : normalizeMessages(body.messages);
+
+  if (!prompt) {
+    return { status: 400, body: { error: 'Missing string field: prompt, or non-empty messages array.' } };
+  }
+
+  const model = typeof body.model === 'string' ? body.model : defaultChatModel;
+  if (!/^[-\w./:]+$/.test(model)) {
+    return { status: 400, body: { error: 'Invalid model.' } };
+  }
+
+  const args = ['--no-color', 'code'];
+  if (body.agent) args.push('-a', String(body.agent));
+  args.push('-m', model);
+  if (body.smallModel) args.push('-s', String(body.smallModel));
+  if (body.effort) args.push('--effort', String(body.effort));
+  args.push('--', prompt);
+
+  const cwd = typeof body.cwd === 'string' ? body.cwd : defaultChatCwd;
+  const result = await runMuleRun(args, { cwd });
+
+  return {
+    status: result.status,
+    body: {
+      ok: result.ok,
+      model,
+      cwd,
+      content: result.stdout.trim(),
+      stderr: result.stderr.trim() || undefined,
+      code: result.code,
+      error: result.error,
+    },
+  };
+}
+
+// Decode a data: URI (or bare base64) upload into a temp file, keeping the real
+// extension so the downstream model can sniff the right MIME type.
+const MIME_EXT = {
+  'image/png': 'png', 'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif',
+};
+async function saveDataUriPhoto(dataUri) {
+  const m = /^data:(image\/[\w+.-]+)?;base64,(.*)$/s.exec(dataUri) || [];
+  const b64 = m[2] || dataUri;
+  const buf = Buffer.from(b64, 'base64');
+  if (!buf.length) throw new Error('Empty photo payload.');
+  const ext = MIME_EXT[(m[1] || '').toLowerCase()] || 'png';
+  const dir = await mkdtemp(join(tmpdir(), 'kof-photo-'));
+  const path = join(dir, `source.${ext}`);
+  await writeFile(path, buf);
+  return path;
+}
+
 const server = http.createServer(async (req, res) => {
   if (req.method === 'OPTIONS') {
     sendJson(res, 204, {});
@@ -136,7 +209,17 @@ const server = http.createServer(async (req, res) => {
     const url = new URL(req.url || '/', `http://${req.headers.host}`);
 
     if (req.method === 'GET' && url.pathname === '/health') {
-      sendJson(res, 200, { ok: true, presets });
+      sendJson(res, 200, { ok: true, presets, chat: { defaultModel: defaultChatModel } });
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/chat/models') {
+      const result = await runMuleRun(['code', 'models']);
+      sendJson(res, result.status, {
+        ok: result.ok,
+        content: result.stdout.trim(),
+        stderr: result.stderr.trim() || undefined,
+      });
       return;
     }
 
@@ -164,6 +247,54 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (req.method === 'POST' && url.pathname === '/api/chat') {
+      const body = await readJson(req);
+      const output = await runChat(body);
+      sendJson(res, output.status, output.body);
+      return;
+    }
+
+    // Custom-character generation: start a job, then poll it.
+    if (req.method === 'POST' && url.pathname === '/api/generate-character') {
+      const body = await readJson(req);
+      if (!body.name || typeof body.name !== 'string') {
+        sendJson(res, 400, { error: 'Missing string field: name' });
+        return;
+      }
+      let photoPath = null;
+      if (body.photo) {
+        try {
+          photoPath = await saveDataUriPhoto(body.photo);
+        } catch (e) {
+          sendJson(res, 400, { error: `Bad photo: ${e.message}` });
+          return;
+        }
+      }
+      if (!photoPath && !body.mock) {
+        sendJson(res, 400, { error: 'Missing photo (data URI) — or pass mock:true to dry-run.' });
+        return;
+      }
+      const job = startCharacterJob({ name: body.name, photoPath, mock: !!body.mock });
+      sendJson(res, 202, job);
+      return;
+    }
+
+    const jobMatch = url.pathname.match(/^\/api\/generate-character\/([\w-]+)$/);
+    if (req.method === 'GET' && jobMatch) {
+      const job = getJob(jobMatch[1]);
+      if (!job) {
+        sendJson(res, 404, { error: 'Unknown job.' });
+        return;
+      }
+      sendJson(res, 200, job);
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/generate-character') {
+      sendJson(res, 200, { jobs: listJobs() });
+      return;
+    }
+
     const presetMatch = url.pathname.match(/^\/api\/([^/]+)$/);
     if (req.method === 'POST' && presetMatch) {
       const preset = presetMatch[1];
@@ -182,7 +313,14 @@ const server = http.createServer(async (req, res) => {
 
     sendJson(res, 404, {
       error: 'Not found.',
-      routes: ['GET /health', 'GET /api/models', 'POST /api/run', ...Object.keys(presets).map((name) => `POST /api/${name}`)],
+      routes: [
+        'GET /health',
+        'GET /api/models',
+        'GET /api/chat/models',
+        'POST /api/chat',
+        'POST /api/run',
+        ...Object.keys(presets).map((name) => `POST /api/${name}`),
+      ],
     });
   } catch (error) {
     sendJson(res, 500, { error: error.message });
@@ -191,5 +329,5 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(port, host, () => {
   console.log(`Local MuleRun Studio API listening on http://${host}:${port}`);
-  console.log('Routes: GET /health, GET /api/models, POST /api/{seedence|chatgpt-image2|nanobanana-pro}');
+  console.log('Routes: GET /health, GET /api/models, GET /api/chat/models, POST /api/chat, POST /api/{seedence|chatgpt-image2|nanobanana-pro}');
 });

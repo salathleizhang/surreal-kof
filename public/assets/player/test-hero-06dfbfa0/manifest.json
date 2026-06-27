@@ -1,0 +1,61 @@
+{
+  "id": "test-hero-06dfbfa0",
+  "name": "TEST HERO",
+  "cn": "Test Hero",
+  "summary": "",
+  "base": "assets/player/test-hero-06dfbfa0/base.png",
+  "portrait": "assets/player/test-hero-06dfbfa0/idle/0001.png",
+  "anims": {
+    "idle": {
+      "engineState": 0,
+      "dir": "assets/player/test-hero-06dfbfa0/idle",
+      "frames": 8,
+      "playback": "loop",
+      "matte": true
+    },
+    "walk": {
+      "engineState": 1,
+      "dir": "assets/player/test-hero-06dfbfa0/walk",
+      "frames": 8,
+      "playback": "loop",
+      "matte": true
+    },
+    "attack1": {
+      "engineState": 4,
+      "dir": "assets/player/test-hero-06dfbfa0/attack1",
+      "frames": 7,
+      "playback": "yoyo",
+      "matte": true
+    },
+    "attack2": {
+      "engineState": "attack2",
+      "dir": "assets/player/test-hero-06dfbfa0/attack2",
+      "frames": 7,
+      "playback": "yoyo",
+      "matte": true
+    },
+    "intro": {
+      "engineState": "intro",
+      "dir": "assets/player/test-hero-06dfbfa0/intro",
+      "frames": 8,
+      "playback": "forward",
+      "matte": true
+    },
+    "death": {
+      "engineState": 6,
+      "dir": "assets/player/test-hero-06dfbfa0/death",
+      "frames": 10,
+      "playback": "hold",
+      "matte": true
+    },
+    "super": {
+      "engineState": "super",
+      "dir": "assets/player/test-hero-06dfbfa0/super",
+      "frames": 14,
+      "playback": "forward",
+      "matte": false
+    }
+  },
+  "moves": {},
+  "createdAt": 1782598075827
+}

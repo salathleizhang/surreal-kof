@@ -1,0 +1,50 @@
+{
+  "nameEn": "Test Hero",
+  "nameCn": "Test Hero",
+  "summary": "",
+  "anims": {
+    "idle": {
+      "startPose": "relaxed fighting idle stance, fists up, slight breathing",
+      "endPose": "relaxed fighting idle stance, fists up, weight shifted",
+      "motion": "subtle idle breathing bob, fighting stance",
+      "flavor": ""
+    },
+    "walk": {
+      "startPose": "mid stride walking forward, left foot forward",
+      "endPose": "mid stride walking forward, right foot forward",
+      "motion": "walking forward in a loop, marching gait",
+      "flavor": ""
+    },
+    "attack1": {
+      "startPose": "idle fighting stance, fists up",
+      "endPose": "fully extended straight punch forward, arm out",
+      "motion": "throws a fast straight punch forward then retracts",
+      "flavor": ""
+    },
+    "attack2": {
+      "startPose": "idle fighting stance, fists up",
+      "endPose": "high roundhouse kick fully extended",
+      "motion": "spins into a roundhouse kick then recovers",
+      "flavor": ""
+    },
+    "intro": {
+      "startPose": "standing neutral, arms at sides",
+      "endPose": "confident entrance victory pose, taunting the camera",
+      "motion": "steps in and strikes a confident entrance pose",
+      "flavor": ""
+    },
+    "death": {
+      "startPose": "staggering backward, off balance",
+      "endPose": "knocked out lying on the ground, defeated",
+      "motion": "gets knocked back and collapses to the ground defeated",
+      "flavor": ""
+    },
+    "super": {
+      "startPose": "charging up a massive special move, energy gathering, dramatic glow",
+      "endPose": "unleashing an explosive screen-filling special attack, huge energy blast",
+      "motion": "unleashes an explosive screen-filling super special move with energy effects",
+      "flavor": "over-the-top finishing move"
+    }
+  },
+  "moves": {}
+}

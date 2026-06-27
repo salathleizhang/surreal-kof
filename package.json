@@ -12,7 +12,8 @@
   },
   "dependencies": {
     "@fontsource/press-start-2p": "^5.2.7",
-    "phaser": "^3.80.1"
+    "phaser": "^3.80.1",
+    "pngjs": "^7.0.0"
   },
   "devDependencies": {
     "vite": "^5.4.0"

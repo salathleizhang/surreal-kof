@@ -1,0 +1,130 @@
+// Runtime registry for AI-generated fighters.
+//
+// A generated character is produced by the local pipeline as a manifest + a set
+// of transparent PNG frames under assets/player/<id>/. This module loads those
+// frames into Phaser textures (keyed `<id>-<state>-<frame>`, matching how
+// Player.render() looks them up) and records the per-state animation metadata so
+// a GeneratedFighter can play it. Textures live in Phaser's global manager, so a
+// character loaded once (e.g. on the select screen) is available in the fight.
+
+// Which engine FSM state each generated animation drives.
+const KEY_TO_STATE = {
+  idle: 0, walk: 1, attack1: 4, attack2: 7, super: 8, intro: 9, death: 6,
+};
+
+// Game frames per sprite frame, by playback mode (≈60fps): looping idles are
+// slow, attacks are snappy.
+const FRAME_RATE = {
+  loop: 6, yoyo: 3, forward: 4, hold: 5,
+};
+
+// id -> { id, name, cn, portrait, srcW, srcH, animMeta, moves }
+export const GENERATED = {};
+
+function pad4(n) { return String(n).padStart(4, '0'); }
+
+// Load a list of {key,url} images through the scene loader, resolving once all
+// have finished (or rejecting on the first hard error).
+function loadImages(scene, entries) {
+  return new Promise((resolve, reject) => {
+    if (!entries.length) { resolve(); return; }
+    const loader = scene.load;
+    entries.forEach((e) => {
+      if (!scene.textures.exists(e.key)) loader.image(e.key, e.url);
+    });
+    loader.once('complete', resolve);
+    loader.once('loaderror', (file) => reject(new Error(`Failed to load ${file.key || file.src}`)));
+    loader.start();
+  });
+}
+
+// Register `${id}-${toState}-${k}` as a copy of an already-loaded source frame,
+// so engine states without their own art (backward, jump, hit) can reuse one.
+function aliasFrames(scene, id, fromState, toState, count) {
+  for (let k = 0; k < count; k += 1) {
+    const src = `${id}-${fromState}-${k}`;
+    const dst = `${id}-${toState}-${k}`;
+    if (!scene.textures.exists(src)) continue;
+    if (scene.textures.exists(dst)) scene.textures.remove(dst);
+    scene.textures.addImage(dst, scene.textures.get(src).getSourceImage());
+  }
+}
+
+// Load a manifest's frames into textures and register the character. `base` is a
+// URL prefix (default '') in case assets are served from a sub-path.
+export async function loadGeneratedCharacter(scene, manifest, base = '') {
+  const { id } = manifest;
+  if (GENERATED[id]) return GENERATED[id];
+
+  // Build the full frame list across every animation.
+  const entries = [];
+  const animMeta = {};
+  for (const [animKey, info] of Object.entries(manifest.anims)) {
+    const state = KEY_TO_STATE[animKey];
+    if (state === undefined) continue;
+    for (let i = 0; i < info.frames; i += 1) {
+      entries.push({ key: `${id}-${state}-${i}`, url: `${base}${info.dir}/${pad4(i + 1)}.png` });
+    }
+    animMeta[state] = {
+      frame_cnt: info.frames,
+      frame_rate: FRAME_RATE[info.playback] || 5,
+      playback: info.playback,
+    };
+  }
+
+  await loadImages(scene, entries);
+
+  // Reuse art for engine states the pipeline doesn't generate:
+  //   2 backward <- walk, 3 jump <- idle, 5 hit <- first death frame.
+  const walk = animMeta[1];
+  const idle = animMeta[0];
+  const death = animMeta[6];
+  if (walk) {
+    aliasFrames(scene, id, 1, 2, walk.frame_cnt);
+    animMeta[2] = { ...walk, playback: 'loop' };
+  }
+  if (idle) {
+    aliasFrames(scene, id, 0, 3, idle.frame_cnt);
+    animMeta[3] = { ...idle, playback: 'loop' };
+  }
+  if (death) {
+    aliasFrames(scene, id, 6, 5, 1); // single recoil frame
+    animMeta[5] = { frame_cnt: 1, frame_rate: 4, playback: 'forward' };
+  }
+
+  // Source dimensions (all frames share a size) for the fighter's scale/offset.
+  const idleSrc = scene.textures.get(`${id}-0-0`).getSourceImage();
+  const entry = {
+    id,
+    name: manifest.name || id.toUpperCase(),
+    cn: manifest.cn || manifest.name || id,
+    portrait: `${id}-0-0`,
+    srcW: idleSrc.width,
+    srcH: idleSrc.height,
+    animMeta,
+    moves: manifest.moves || {},
+  };
+  GENERATED[id] = entry;
+  return entry;
+}
+
+// Fetch the generated-character index and load every previously-made fighter so
+// they survive a page reload. Best-effort: missing index just yields [].
+export async function loadGeneratedIndex(scene, base = '') {
+  let index = [];
+  try {
+    const resp = await fetch(`${base}assets/player/generated-index.json`, { cache: 'no-store' });
+    if (resp.ok) index = await resp.json();
+  } catch { index = []; }
+
+  const loaded = [];
+  for (const item of index) {
+    try {
+      const m = await fetch(`${base}${item.manifest}`, { cache: 'no-store' });
+      if (!m.ok) continue;
+      const manifest = await m.json();
+      loaded.push(await loadGeneratedCharacter(scene, manifest, base));
+    } catch { /* skip a broken entry, keep the rest */ }
+  }
+  return loaded;
+}

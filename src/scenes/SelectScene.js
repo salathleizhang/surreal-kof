@@ -1,8 +1,14 @@
 import Phaser from 'phaser';
-import { CHARACTERS, SELECT_GRID } from '../objects/roster.js';
+import { getCharacter, SELECT_GRID } from '../objects/roster.js';
+import { GENERATED, loadGeneratedCharacter } from '../objects/generatedRoster.js';
+import { openCreateCharacterModal } from '../ui/CreateCharacterModal.js';
 import { PIXEL_FONT, PIXEL_FONT_CN } from '../fonts.js';
 import { setVerticalGradient } from '../utils/text.js';
 import { playUi, startMenuBgm } from '../audio.js';
+
+// The grid cell that opens the "create custom fighter" modal instead of being a
+// selectable character.
+const ADD_KEY = '__add__';
 
 const { JustDown } = Phaser.Input.Keyboard;
 const { KeyCodes } = Phaser.Input.Keyboard;
@@ -60,6 +66,7 @@ export default class SelectScene extends Phaser.Scene {
     setVerticalGradient(title, ['#d6fff4', '#7fffd4', '#1f9c84']);
     this.title = title;
 
+    this.initCellChars();
     this.buildSideFigures();
     this.buildGrid();
     this.buildHints();
@@ -167,6 +174,29 @@ export default class SelectScene extends Phaser.Scene {
     });
   }
 
+  // Lay out which character (or the "+" add button) sits in each grid cell. The
+  // bottom-right cell is always the add button; generated fighters fill the
+  // slots after Kyo, the rest stay Kyo so the screen keeps its full KOF look.
+  initCellChars() {
+    const total = SELECT_GRID.cols * SELECT_GRID.rows;
+    this.cellChars = new Array(total).fill('kyo');
+    this.addIndex = total - 1;
+    this.cellChars[this.addIndex] = ADD_KEY;
+    this.nextSlot = 1; // first free slot for a generated fighter
+    // Seed any fighters already loaded this session (e.g. from the preloader).
+    for (const id of Object.keys(GENERATED)) this.assignSlot(id);
+  }
+
+  // Claim the next free cell for a generated fighter id; returns its index or -1
+  // when the grid is full. Only mutates the data array — cells are painted later.
+  assignSlot(id) {
+    if (this.nextSlot >= this.addIndex) return -1;
+    const slot = this.nextSlot;
+    this.cellChars[slot] = id;
+    this.nextSlot += 1;
+    return slot;
+  }
+
   buildGrid() {
     const { cols } = SELECT_GRID;
     const gridW = cols * CELL + (cols - 1) * GAP;
@@ -176,7 +206,7 @@ export default class SelectScene extends Phaser.Scene {
     // Collected so the intro can slide every cell/portrait in together.
     this.gridObjects = [];
 
-    this.cells = SELECT_GRID.cells.map((charKey, i) => {
+    this.cells = this.cellChars.map((charKey, i) => {
       const col = i % cols;
       const row = Math.floor(i / cols);
       const x = this.gridX + col * (CELL + GAP);
@@ -188,13 +218,66 @@ export default class SelectScene extends Phaser.Scene {
         .setStrokeStyle(2, 0x4466aa)
         .setDepth(4);
 
-      const portrait = this.addFittedPortrait(
-        CHARACTERS[charKey].portrait, x + 5, y + 5, CELL - 10, CELL - 10, 5,
+      const cell = {
+        charKey, x, y, rect, portrait: null,
+      };
+      this.paintCell(cell);
+      this.gridObjects.push(rect);
+      if (cell.portrait) this.gridObjects.push(cell.portrait);
+      return cell;
+    });
+  }
+
+  // (Re)draw a cell's contents: a "+" for the add button, otherwise the
+  // character's portrait (if its texture is loaded).
+  paintCell(cell) {
+    if (cell.portrait) { cell.portrait.destroy(); cell.portrait = null; }
+
+    if (cell.charKey === ADD_KEY) {
+      cell.portrait = this.add
+        .text(cell.x + CELL / 2, cell.y + CELL / 2, '＋', {
+          fontFamily: PIXEL_FONT, fontSize: '46px', color: '#7fffd4',
+        })
+        .setOrigin(0.5)
+        .setDepth(5);
+      return;
+    }
+
+    const ch = getCharacter(cell.charKey);
+    if (ch && this.textures.exists(ch.portrait)) {
+      cell.portrait = this.addFittedPortrait(
+        ch.portrait, cell.x + 5, cell.y + 5, CELL - 10, CELL - 10, 5,
       );
+    }
+  }
 
-      this.gridObjects.push(rect, portrait);
+  // Called after a fighter finishes generating: drop it into the next free cell
+  // and repaint that cell with its fresh portrait.
+  addGeneratedCharacter(entry) {
+    const slot = this.assignSlot(entry.id);
+    if (slot < 0) return;
+    const cell = this.cells[slot];
+    cell.charKey = entry.id;
+    this.paintCell(cell);
+    this.drawCursors();
+  }
 
-      return { charKey, x, y };
+  // Open the DOM modal that drives the generation pipeline. Disabled while one is
+  // already open so a player can't stack modals.
+  openCreateModal() {
+    if (this.modalOpen) return;
+    this.modalOpen = true;
+    playUi(this, 'select');
+    openCreateCharacterModal({
+      onComplete: async (manifest) => {
+        try {
+          const entry = await loadGeneratedCharacter(this, manifest);
+          this.addGeneratedCharacter(entry);
+        } catch (e) {
+          console.error('Failed to load generated character', e);
+        }
+      },
+      onClose: () => { this.modalOpen = false; },
     });
   }
 
@@ -348,8 +431,23 @@ export default class SelectScene extends Phaser.Scene {
 
   applyFigureTexture(id) {
     const fig = this.figures[id];
-    const char = CHARACTERS[this.cells[this.cellIndex(this.p[id])].charKey];
+    const key = this.cells[this.cellIndex(this.p[id])].charKey;
 
+    // The "+" cell has no fighter art — show a prompt instead.
+    if (key === ADD_KEY) {
+      fig.figure.setVisible(false);
+      fig.name.setText('新建角色');
+      return;
+    }
+
+    const char = getCharacter(key);
+    if (!char || !this.textures.exists(char.portrait)) {
+      fig.figure.setVisible(false);
+      fig.name.setText(char ? char.cn || char.name : '');
+      return;
+    }
+
+    fig.figure.setVisible(true);
     fig.figure.setTexture(char.portrait);
     const src = this.textures.get(char.portrait).getSourceImage();
     const scale = Math.min(fig.boxW / src.width, fig.boxH / src.height);
@@ -441,9 +539,15 @@ export default class SelectScene extends Phaser.Scene {
     if (moved) { this.swapFigure(id); playUi(this, 'cursor'); changed = true; }
 
     if (JustDown(k.confirm)) {
-      player.confirmed = true;
-      this.refreshFigure(id); // snap home + show OK!
-      playUi(this, 'select');
+      const key = this.cells[this.cellIndex(player)].charKey;
+      if (key === ADD_KEY) {
+        // The "+" cell launches the creation flow instead of locking a pick.
+        this.openCreateModal();
+      } else {
+        player.confirmed = true;
+        this.refreshFigure(id); // snap home + show OK!
+        playUi(this, 'select');
+      }
       changed = true;
     }
 
@@ -455,7 +559,10 @@ export default class SelectScene extends Phaser.Scene {
     // Both fighters are locked in; carry the picks to the stage-select screen,
     // which then runs its own FIGHT! flash before handing off to the fight. (No
     // announcer here — the "Round 1, Fight!" cue belongs to the fight scene.)
-    const selections = this.p.map((player) => this.cells[this.cellIndex(player)].charKey);
+    const selections = this.p.map((player) => {
+      const key = this.cells[this.cellIndex(player)].charKey;
+      return key === ADD_KEY ? 'kyo' : key; // the CPU may land on the "+" cell
+    });
 
     this.scene.start('scene-select', { selections, mode: this.mode });
   }

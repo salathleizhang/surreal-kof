@@ -1,0 +1,9 @@
+[
+  {
+    "id": "test-hero-06dfbfa0",
+    "name": "TEST HERO",
+    "cn": "Test Hero",
+    "portrait": "assets/player/test-hero-06dfbfa0/idle/0001.png",
+    "manifest": "assets/player/test-hero-06dfbfa0/manifest.json"
+  }
+]

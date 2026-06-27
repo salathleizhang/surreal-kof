@@ -35,12 +35,14 @@ export default class Player {
 
     this.id = info.id;
     this.x = info.x; // logical top-left of the hitbox
-    this.y = info.y;
     this.width = info.width * CHARACTER_SCALE;
     this.height = info.height * CHARACTER_SCALE;
 
     // Hitbox bottom rests on the floor, so taller fighters start higher up.
     this.groundY = FLOOR_Y - this.height;
+    // Start planted on the floor (no drop-in): the fighters hold their idle
+    // pose in place through the opening ceremony.
+    this.y = this.groundY;
 
     this.direction = 1; // facing right = 1, facing left = -1
 
@@ -53,8 +55,9 @@ export default class Player {
     // Per-frame gravity step, matching the original ~60fps tuning.
     this.gravity = 50;
 
-    // Falls in from the top of the screen, so it starts in the jump state.
-    this.status = STATUS.JUMP;
+    // Stand idle on the floor; the round goes live (and animation begins) once
+    // the opening ceremony ends.
+    this.status = STATUS.IDLE;
 
     // status -> { frame_cnt, frame_rate, offset_y, scale }; filled by subclass.
     this.animations = new Map();
@@ -108,6 +111,10 @@ export default class Player {
   }
 
   update_control() {
+    // Controls are locked through the opening ceremony and once the round has
+    // been decided (KO): ignore all input so fighters hold their pose.
+    if (this.scene.introActive || this.scene.gameOver) return;
+
     const input = this.read_input();
     const w = input.up;
     const a = input.left;

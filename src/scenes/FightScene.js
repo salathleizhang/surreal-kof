@@ -32,9 +32,11 @@ export default class FightScene extends Phaser.Scene {
     const selections = (data && data.selections) || [DEFAULT_CHARACTER, DEFAULT_CHARACTER];
     // In single-player mode, player 2 is controlled by the AI.
     const mode = (data && data.mode) || 'versus';
+    // Fighters stand on the floor from the start (their y is derived from the
+    // floor line in Player), so only the horizontal spawn position matters here.
     const spawns = [
-      { id: 0, x: 200, y: 0, width: 120, height: 200 },
-      { id: 1, x: 900, y: 0, width: 120, height: 200 },
+      { id: 0, x: 200, width: 120, height: 200 },
+      { id: 1, x: 900, width: 120, height: 200 },
     ];
 
     this.players = spawns.map((spawn) => {
@@ -45,6 +47,7 @@ export default class FightScene extends Phaser.Scene {
 
     this.timeLeft = ROUND_TIME_MS;
     this.hitstop = 0; // frames left to freeze the action after a hit
+    this.gameOver = false; // set once a fighter is KO'd; freezes input + clock
     this.createDustTexture();
     this.createHud();
 
@@ -215,8 +218,23 @@ export default class FightScene extends Phaser.Scene {
   }
 
   update(_time, delta) {
-    // Opening ceremony: keep both fighters frozen until the announcer finishes.
-    if (this.introActive) return;
+    // Guard against huge steps after a tab switch / first frame.
+    const timedelta = Math.min(delta, 100);
+
+    // Opening ceremony: the fighters hold their idle pose in place — the idle
+    // animation keeps playing, but input (see Player.update_control) and the
+    // round clock stay frozen until the announcer finishes.
+    if (this.introActive) {
+      for (const player of this.players) player.update(timedelta);
+      return;
+    }
+
+    // Round decided: keep the fighters' animations ticking (death pose / idle)
+    // but the clock and input stay frozen while "KO" is on screen.
+    if (this.gameOver) {
+      for (const player of this.players) player.update(timedelta);
+      return;
+    }
 
     // Hitstop: hold the action (and the frame on screen) frozen for a beat so
     // the hit reads as impact. Tween-driven FX/HP bars keep animating.
@@ -225,12 +243,74 @@ export default class FightScene extends Phaser.Scene {
       return;
     }
 
-    // Guard against huge steps after a tab switch / first frame.
-    const timedelta = Math.min(delta, 100);
-
     this.updateTimer(timedelta);
     for (const player of this.players) player.update(timedelta);
     this.updateHud();
+    this.checkKo();
+  }
+
+  // End the round as soon as either fighter drops. Shows the big "KO", then
+  // invites the player to press any key to return to the title screen.
+  checkKo() {
+    if (this.gameOver) return;
+    if (!this.players.some((p) => p.status === STATUS.DEATH)) return;
+
+    this.gameOver = true;
+    for (const player of this.players) player.vx = 0; // stop the winner mid-stride
+
+    const { width, height } = this.scale;
+    const ko = this.add
+      .text(width / 2, height / 2, 'K.O.', {
+        fontFamily: PIXEL_FONT,
+        fontSize: '120px',
+        fontStyle: 'bold',
+        color: '#ffffff',
+        stroke: '#000000',
+        strokeThickness: 12,
+        align: 'center',
+      })
+      .setOrigin(0.5)
+      .setDepth(30)
+      .setScale(2)
+      .setAlpha(0);
+
+    // Slam the word onto the screen.
+    this.tweens.add({
+      targets: ko,
+      scale: 1,
+      alpha: 1,
+      duration: 350,
+      ease: 'Back.easeOut',
+    });
+
+    // After a beat, offer the "press any key" prompt and arm the return.
+    this.time.delayedCall(1400, () => {
+      const hint = this.add
+        .text(width / 2, height / 2 + 120, 'PRESS ANY KEY', {
+          fontFamily: PIXEL_FONT,
+          fontSize: '28px',
+          color: '#ffcc33',
+          stroke: '#000000',
+          strokeThickness: 6,
+          align: 'center',
+        })
+        .setOrigin(0.5)
+        .setDepth(30);
+
+      // Blink the prompt so it reads as interactive.
+      this.tweens.add({
+        targets: hint,
+        alpha: 0.2,
+        duration: 500,
+        yoyo: true,
+        repeat: -1,
+      });
+
+      // Any key (or tap) returns to the title screen, which restarts the menu BGM.
+      const toTitle = () => this.scene.start('title');
+      this.input.keyboard.once('keydown', toTitle);
+      this.input.once('pointerdown', toTitle);
+    });
   }
 
   updateTimer(timedelta) {

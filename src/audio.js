@@ -9,12 +9,20 @@ export const UI_SOUNDS = {
   select: 'assets/sounds/ui/select.mp3', // confirming a fighter (KOF '98 rip)
   cancel: 'assets/sounds/ui/cancel.wav', // un-confirming / going back (synth placeholder)
   start: 'assets/sounds/ui/start.mp3', //  fight opener (KOF '97 "Round 1, Ready Go!")
+  ko: 'assets/sounds/ui/ko.mp3', //      knockout (KOF 2003 "K.O.!")
 };
 
 // Looping menu music (KOF '97 "ORDER" player-select theme). Plays across the
 // title + select screens and is stopped when the fight begins.
 export const MENU_BGM_KEY = 'menu-bgm';
 const MENU_BGM_URL = 'assets/music/menu.m4a';
+
+// Impact SFX (KOF '97 hit slices in `assets/sfx/hit/`). A random one fires on
+// each connecting hit, so repeated blows don't sound identical.
+export const HIT_SOUND_KEYS = Array.from(
+  { length: 15 },
+  (_, i) => `hit-${String(i + 1).padStart(2, '0')}`,
+);
 
 // Queue every UI sound + the menu BGM on a scene's loader. Call once from a
 // `preload()`; decoded audio lives in the global cache for any scene to use.
@@ -23,6 +31,15 @@ export function loadUiSounds(scene) {
     if (!scene.cache.audio.exists(key)) scene.load.audio(key, url);
   }
   if (!scene.cache.audio.exists(MENU_BGM_KEY)) scene.load.audio(MENU_BGM_KEY, MENU_BGM_URL);
+  for (const key of HIT_SOUND_KEYS) {
+    if (!scene.cache.audio.exists(key)) scene.load.audio(key, `assets/sfx/hit/${key}.wav`);
+  }
+}
+
+// Play a random impact sound. No-op if none decoded yet.
+export function playHit(scene, config) {
+  const key = HIT_SOUND_KEYS[Math.floor(Math.random() * HIT_SOUND_KEYS.length)];
+  if (scene.cache.audio.exists(key)) scene.sound.play(key, config);
 }
 
 // Play a named UI sound. No-ops if the file is missing (e.g. user deleted a

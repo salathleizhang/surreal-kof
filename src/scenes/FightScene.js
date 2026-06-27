@@ -312,6 +312,9 @@ export default class FightScene extends Phaser.Scene {
   showKo() {
     const { width, height } = this.scale;
 
+    // "K.O.!" announcer, synced to the word slamming onto the screen.
+    playUi(this, 'ko');
+
     const ko = this.add
       .text(width / 2, height / 2, 'K.O.', {
         fontFamily: PIXEL_FONT,

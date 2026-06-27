@@ -37,16 +37,8 @@ export const SCENES = {
   },
 };
 
-// The grid shown on the STAGE SELECT screen. Like the member grid, every cell
-// references a key in SCENES; with a single stage the grid is all street, which
-// still gives the screen its King-of-Fighters look.
-export const SCENE_GRID = {
-  cols: 4,
-  rows: 2,
-  cells: [
-    'street', 'street', 'street', 'street',
-    'street', 'street', 'street', 'street',
-  ],
-};
+// Display order for the STAGE SELECT screen's flip-deck. Each entry is a key in
+// SCENES; the screen flips through them one at a time with W/S (or up/down).
+export const SCENE_ORDER = ['street'];
 
 export const DEFAULT_SCENE = 'street';

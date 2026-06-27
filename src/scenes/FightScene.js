@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { STATUS } from '../objects/Player.js';
-import { CHARACTERS, DEFAULT_CHARACTER } from '../objects/roster.js';
+import {
+  CHARACTERS, DEFAULT_CHARACTER, SCENES, DEFAULT_SCENE,
+} from '../objects/roster.js';
 import { PIXEL_FONT } from '../fonts.js';
 import { playUi, stopMenuBgm } from '../audio.js';
 
@@ -25,7 +27,10 @@ export default class FightScene extends Phaser.Scene {
   create(data) {
     const { width, height } = this.scale;
 
-    this.createBackground(width, height);
+    // The stage chosen on the scene-select screen (key into SCENES); defaults to
+    // the street stage if the fight is launched directly during development.
+    const scene = SCENES[(data && data.scene)] || SCENES[DEFAULT_SCENE];
+    this.createBackground(width, height, scene);
 
     // Characters chosen on the select screen (default to Kyo if launched
     // directly, e.g. during development).
@@ -60,12 +65,13 @@ export default class FightScene extends Phaser.Scene {
     this.startIntro();
   }
 
-  createBackground(width, height) {
-    const bg = this.add.image(width / 2, height, 'bg-0').setOrigin(0.5, 1).setDepth(0);
+  createBackground(width, height, scene) {
+    const prefix = scene.bgPrefix;
+    const bg = this.add.image(width / 2, height, `${prefix}-0`).setOrigin(0.5, 1).setDepth(0);
     const scale = Math.max(width / bg.width, height / bg.height);
     bg.setScale(scale);
 
-    const frameCount = this.registry.get('bgFrameCount') || 1;
+    const frameCount = this.registry.get(scene.frameCountKey) || 1;
     if (frameCount <= 1) return;
 
     let frame = 0;
@@ -74,7 +80,7 @@ export default class FightScene extends Phaser.Scene {
       loop: true,
       callback: () => {
         frame = (frame + 1) % frameCount;
-        bg.setTexture(`bg-${frame}`);
+        bg.setTexture(`${prefix}-${frame}`);
       },
     });
   }

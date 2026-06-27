@@ -452,26 +452,11 @@ export default class SelectScene extends Phaser.Scene {
 
   startFight() {
     this.starting = true;
-    // No announcer here — the "Round 1, Ready Go!" cue belongs to the fight
-    // scene, so it doesn't bleed over the select screen / FIGHT! flash.
-
+    // Both fighters are locked in; carry the picks to the stage-select screen,
+    // which then runs its own FIGHT! flash before handing off to the fight. (No
+    // announcer here — the "Round 1, Fight!" cue belongs to the fight scene.)
     const selections = this.p.map((player) => this.cells[this.cellIndex(player)].charKey);
 
-    const flash = this.add
-      .text(this.scale.width / 2, this.scale.height / 2, 'FIGHT!', {
-        fontFamily: PIXEL_FONT,
-        fontSize: '120px',
-        fontStyle: 'bold',
-        stroke: '#c01b1b',
-        strokeThickness: 14,
-      })
-      .setOrigin(0.5)
-      .setDepth(30);
-    // White-hot top fading to fiery red-orange.
-    setVerticalGradient(flash, ['#ffffff', '#ffd23f', '#ff5a1f']);
-    flash.setScale(0.5);
-    this.tweens.add({ targets: flash, scale: 1, duration: 350, ease: 'Back.out' });
-
-    this.time.delayedCall(700, () => this.scene.start('fight', { selections, mode: this.mode }));
+    this.scene.start('scene-select', { selections, mode: this.mode });
   }
 }

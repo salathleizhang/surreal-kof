@@ -4,6 +4,7 @@ import { setVerticalGradient } from '../utils/text.js';
 import { playUi, startMenuBgm } from '../audio.js';
 
 const { JustDown, KeyCodes } = Phaser.Input.Keyboard;
+const BACKGROUND_FRAME_MS = 100;
 
 // Start screen: the stage art behind a KOF-style logo and a play-mode menu.
 // 1 PLAYER pits 1P against a CPU; 2 PLAYERS is the original human-vs-human mode.
@@ -20,12 +21,7 @@ export default class TitleScene extends Phaser.Scene {
   create() {
     const { width, height } = this.scale;
 
-    this.add
-      .image(0, 0, 'bg-0')
-      .setOrigin(0, 0)
-      .setDisplaySize(width, height)
-      .setDepth(0)
-      .setTint(0x556699); // darken/cool the stage so the logo reads
+    this.createBackground(width, height);
 
     this.add
       .image(width / 2, 150, 'title-logo')
@@ -98,6 +94,30 @@ export default class TitleScene extends Phaser.Scene {
 
     // Menu theme: starts here and keeps playing through the select screen.
     startMenuBgm(this);
+  }
+
+  createBackground(width, height) {
+    const bg = this.add
+      .image(width / 2, height, 'bg-0')
+      .setOrigin(0.5, 1)
+      .setDepth(0)
+      .setTint(0x556699); // darken/cool the stage so the logo reads
+
+    const scale = Math.max(width / bg.width, height / bg.height);
+    bg.setScale(scale);
+
+    const frameCount = this.registry.get('bgFrameCount') || 1;
+    if (frameCount <= 1) return;
+
+    let frame = 0;
+    this.time.addEvent({
+      delay: BACKGROUND_FRAME_MS,
+      loop: true,
+      callback: () => {
+        frame = (frame + 1) % frameCount;
+        bg.setTexture(`bg-${frame}`);
+      },
+    });
   }
 
   refreshMenu() {

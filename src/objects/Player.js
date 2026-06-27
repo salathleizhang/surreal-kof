@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import AiController from './AiController.js';
-import { playHit } from '../audio.js';
+import {
+  playHit, playAttackVoice, playHurtVoice, playDeathVoice, playSwing,
+} from '../audio.js';
 
 const { KeyCodes } = Phaser.Input.Keyboard;
 
@@ -128,6 +130,8 @@ export default class Player {
         this.status = STATUS.ATTACK;
         this.vx = 0;
         this.frame_current_cnt = 0;
+        playAttackVoice(this.scene); // Kyo's "哈!" on swinging
+        playSwing(this.scene); //      the fist's air "whoosh"
       } else if (w) {
         if (d) this.vx = this.speedx; // 45-degree forward jump
         else if (a) this.vx = -this.speedx;
@@ -251,6 +255,9 @@ export default class Player {
       this.status = STATUS.DEATH;
       this.frame_current_cnt = 0;
       this.vx = 0;
+      playDeathVoice(this.scene); // Kyo's death cry on the killing blow
+    } else {
+      playHurtVoice(this.scene); // Kyo's "哦!" on a non-fatal hit
     }
   }
 

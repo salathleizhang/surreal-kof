@@ -35,8 +35,9 @@ export default class FightScene extends Phaser.Scene {
     // Characters chosen on the select screen (default to Kyo if launched
     // directly, e.g. during development).
     const selections = (data && data.selections) || [DEFAULT_CHARACTER, DEFAULT_CHARACTER];
-    // In single-player mode, player 2 is controlled by the AI.
+    // In single-player mode, player 2 is controlled by the AI (1P is the human).
     const mode = (data && data.mode) || 'versus';
+    this.mode = mode;
     // Fighters stand on the floor from the start (their y is derived from the
     // floor line in Player), so only the horizontal spawn position matters here.
     const spawns = [
@@ -312,8 +313,14 @@ export default class FightScene extends Phaser.Scene {
   showKo() {
     const { width, height } = this.scale;
 
-    // "K.O.!" announcer, synced to the word slamming onto the screen.
+    // "K.O.!" announcer, synced to the word slamming onto the screen, then the
+    // result call right after: "Winner!" normally, or "Game Over" when the human
+    // player loses (1P down in single-player) or it's a draw / double-KO.
     playUi(this, 'ko');
+    const p1Dead = this.players[0].status === STATUS.DEATH;
+    const p2Dead = this.players[1].status === STATUS.DEATH;
+    const lose = (p1Dead && p2Dead) || (this.mode === 'single' && p1Dead);
+    this.time.delayedCall(1000, () => playUi(this, lose ? 'gameover' : 'winner'));
 
     const ko = this.add
       .text(width / 2, height / 2, 'K.O.', {

@@ -9,7 +9,9 @@ export const UI_SOUNDS = {
   select: 'assets/sounds/ui/select.mp3', // confirming a fighter (KOF '98 rip)
   cancel: 'assets/sounds/ui/cancel.wav', // un-confirming / going back (synth placeholder)
   start: 'assets/sounds/ui/start.mp3', //  fight opener (KOF '97 "Round 1, Ready Go!")
-  ko: 'assets/sounds/ui/ko.mp3', //      knockout (KOF 2003 "K.O.!")
+  ko: 'assets/sounds/ui/ko.mp3', //         knockout (KOF 2003 "K.O.!")
+  winner: 'assets/sounds/ui/winner.m4a', // victor announced (KOF '97 "Winner!")
+  gameover: 'assets/sounds/ui/gameover.m4a', // player lost / draw (KOF '97 "Game Over")
 };
 
 // Looping menu music (KOF '97 "ORDER" player-select theme). Plays across the
@@ -34,6 +36,11 @@ export function loadUiSounds(scene) {
   for (const key of HIT_SOUND_KEYS) {
     if (!scene.cache.audio.exists(key)) scene.load.audio(key, `assets/sfx/hit/${key}.m4a`);
   }
+  loadVoiceGroup(scene, KYO_VOICE.attack);
+  loadVoiceGroup(scene, KYO_VOICE.hurt);
+  loadVoiceGroup(scene, KYO_VOICE.death);
+  loadSfxGroup(scene, SWING_KEYS, 'swing');
+  loadSfxGroup(scene, EXPLOSION_KEYS, 'explosion');
 }
 
 // Play a random impact sound. No-op if none decoded yet.
@@ -41,6 +48,46 @@ export function playHit(scene, config) {
   const key = HIT_SOUND_KEYS[Math.floor(Math.random() * HIT_SOUND_KEYS.length)];
   if (scene.cache.audio.exists(key)) scene.sound.play(key, config);
 }
+
+// Per-character battle voice (Kyo, KOF XI rip). One random clip plays per event:
+// a grunt on attacking, a yelp on getting hit, a cry on the killing blow.
+const KYO_VOICE_DIR = 'assets/sfx/voice/kyo';
+export const KYO_VOICE = {
+  attack: Array.from({ length: 6 }, (_, i) => `kyo-attack-${String(i + 1).padStart(2, '0')}`),
+  hurt: Array.from({ length: 5 }, (_, i) => `kyo-hurt-${String(i + 1).padStart(2, '0')}`),
+  death: Array.from({ length: 2 }, (_, i) => `kyo-death-${String(i + 1).padStart(2, '0')}`),
+};
+
+// Move SFX (also from the Kyo rip): the air "whoosh" of a swing, and the
+// explosion of his fire moves. Keyed by `<group>-NN`, files in their own dirs.
+export const SWING_KEYS = Array.from({ length: 3 }, (_, i) => `swing-${String(i + 1).padStart(2, '0')}`);
+export const EXPLOSION_KEYS = Array.from({ length: 3 }, (_, i) => `explosion-${String(i + 1).padStart(2, '0')}`);
+
+function loadVoiceGroup(scene, keys) {
+  for (const key of keys) {
+    if (!scene.cache.audio.exists(key)) {
+      scene.load.audio(key, `${KYO_VOICE_DIR}/${key.replace('kyo-', '')}.m4a`);
+    }
+  }
+}
+
+function loadSfxGroup(scene, keys, dir) {
+  for (const key of keys) {
+    if (!scene.cache.audio.exists(key)) scene.load.audio(key, `assets/sfx/${dir}/${key}.m4a`);
+  }
+}
+
+function playFrom(scene, keys, config) {
+  if (!keys.length) return;
+  const key = keys[Math.floor(Math.random() * keys.length)];
+  if (scene.cache.audio.exists(key)) scene.sound.play(key, config);
+}
+
+export const playAttackVoice = (scene, config) => playFrom(scene, KYO_VOICE.attack, config);
+export const playHurtVoice = (scene, config) => playFrom(scene, KYO_VOICE.hurt, config);
+export const playDeathVoice = (scene, config) => playFrom(scene, KYO_VOICE.death, config);
+export const playSwing = (scene, config) => playFrom(scene, SWING_KEYS, config);
+export const playExplosion = (scene, config) => playFrom(scene, EXPLOSION_KEYS, config);
 
 // Play a named UI sound. No-ops if the file is missing (e.g. user deleted a
 // placeholder) and is safe to call before the audio system unlocks — Phaser

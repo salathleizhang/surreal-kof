@@ -5,6 +5,7 @@ import { PIXEL_FONT } from '../fonts.js';
 import { playUi, stopMenuBgm } from '../audio.js';
 
 const ROUND_TIME_MS = 60000;
+const BACKGROUND_FRAME_MS = 100;
 // Pre-fight ceremony: hold the action while the "Round 1, Fight!" announcer
 // plays (~4s) before the round goes live.
 const INTRO_MS = 4000;
@@ -24,8 +25,7 @@ export default class FightScene extends Phaser.Scene {
   create(data) {
     const { width, height } = this.scale;
 
-    // Background: first decoded frame of the stage GIF, stretched to fill.
-    this.add.image(0, 0, 'bg-0').setOrigin(0, 0).setDisplaySize(width, height).setDepth(0);
+    this.createBackground(width, height);
 
     // Characters chosen on the select screen (default to Kyo if launched
     // directly, e.g. during development).
@@ -58,6 +58,25 @@ export default class FightScene extends Phaser.Scene {
     // round goes live.
     stopMenuBgm();
     this.startIntro();
+  }
+
+  createBackground(width, height) {
+    const bg = this.add.image(width / 2, height, 'bg-0').setOrigin(0.5, 1).setDepth(0);
+    const scale = Math.max(width / bg.width, height / bg.height);
+    bg.setScale(scale);
+
+    const frameCount = this.registry.get('bgFrameCount') || 1;
+    if (frameCount <= 1) return;
+
+    let frame = 0;
+    this.time.addEvent({
+      delay: BACKGROUND_FRAME_MS,
+      loop: true,
+      callback: () => {
+        frame = (frame + 1) % frameCount;
+        bg.setTexture(`bg-${frame}`);
+      },
+    });
   }
 
   // The opening ceremony: freeze the action while the announcer plays, flashing

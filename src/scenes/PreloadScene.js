@@ -40,10 +40,11 @@ export default class PreloadScene extends Phaser.Scene {
         tasks.push(registerGifTextures(this, `kyo-${i}`, `assets/player/kyo/${i}.gif`));
       }
 
-      const [, ...kyoFrameCounts] = await Promise.all(tasks);
+      const [bgFrameCount, ...kyoFrameCounts] = await Promise.all(tasks);
 
       // The players need to know how many frames each state animation has so
       // they can cycle and detect when an animation finishes.
+      this.registry.set('bgFrameCount', bgFrameCount);
       this.registry.set('kyoFrameCounts', kyoFrameCounts);
 
       this.scene.start('title');

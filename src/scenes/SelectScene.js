@@ -58,6 +58,7 @@ export default class SelectScene extends Phaser.Scene {
       .setDepth(5);
     // Bright aqua fading into a deeper teal.
     setVerticalGradient(title, ['#d6fff4', '#7fffd4', '#1f9c84']);
+    this.title = title;
 
     this.buildSideFigures();
     this.buildGrid();
@@ -101,8 +102,66 @@ export default class SelectScene extends Phaser.Scene {
     this.p.forEach((_, id) => this.refreshFigure(id));
     this.drawCursors();
 
+    // Slide everything in from off-screen before handing control to the players.
+    this.playIntro();
+
     // Keep the menu theme going (no-op if it's already playing from the title).
     startMenuBgm(this);
+  }
+
+  // KOF-style entrance: the title + grid drop in from the top, the two side
+  // figures (with their name plates) slide in from the left and right, and the
+  // control hints rise up from the bottom. Input is locked until it finishes.
+  playIntro() {
+    this.introActive = true;
+    const { width, height } = this.scale;
+
+    // Cursors and tags stay hidden until the grid has landed.
+    this.cursorGfx.setAlpha(0);
+    this.cursorTags.forEach((tag) => tag.setAlpha(0));
+
+    // Top: title + every grid cell/portrait drop down into place.
+    const topTargets = [this.title, ...this.gridObjects];
+    topTargets.forEach((o) => { o.y -= height; });
+    this.tweens.add({
+      targets: topTargets,
+      y: `+=${height}`,
+      duration: 600,
+      ease: 'Back.out',
+      onComplete: () => {
+        this.tweens.add({
+          targets: [this.cursorGfx, ...this.cursorTags],
+          alpha: 1,
+          duration: 200,
+        });
+        this.introActive = false;
+      },
+    });
+
+    // Sides: each figure + its name plate + status slide in horizontally.
+    this.figures.forEach((fig, id) => {
+      const dir = id === 0 ? -1 : 1; // 1P from the left, 2P from the right
+      const targets = [fig.figure, fig.name, fig.status];
+      targets.forEach((o) => { o.x += dir * width; });
+      this.tweens.add({
+        targets,
+        x: `+=${-dir * width}`,
+        duration: 600,
+        ease: 'Back.out',
+        delay: 120,
+        onComplete: () => { fig.figure.x = fig.homeX; },
+      });
+    });
+
+    // Bottom: the control hints rise up into view.
+    this.hints.y += 120;
+    this.tweens.add({
+      targets: this.hints,
+      y: `-=120`,
+      duration: 600,
+      ease: 'Back.out',
+      delay: 240,
+    });
   }
 
   buildGrid() {
@@ -111,19 +170,26 @@ export default class SelectScene extends Phaser.Scene {
     this.gridX = (this.scale.width - gridW) / 2;
     this.gridY = 210;
 
+    // Collected so the intro can slide every cell/portrait in together.
+    this.gridObjects = [];
+
     this.cells = SELECT_GRID.cells.map((charKey, i) => {
       const col = i % cols;
       const row = Math.floor(i / cols);
       const x = this.gridX + col * (CELL + GAP);
       const y = this.gridY + row * (CELL + GAP);
 
-      this.add
+      const rect = this.add
         .rectangle(x, y, CELL, CELL, 0x0a1430, 0.85)
         .setOrigin(0, 0)
         .setStrokeStyle(2, 0x4466aa)
         .setDepth(4);
 
-      this.addFittedPortrait(CHARACTERS[charKey].portrait, x + 5, y + 5, CELL - 10, CELL - 10, 5);
+      const portrait = this.addFittedPortrait(
+        CHARACTERS[charKey].portrait, x + 5, y + 5, CELL - 10, CELL - 10, 5,
+      );
+
+      this.gridObjects.push(rect, portrait);
 
       return { charKey, x, y };
     });
@@ -182,7 +248,7 @@ export default class SelectScene extends Phaser.Scene {
 
   buildHints() {
     const { width, height } = this.scale;
-    this.add
+    this.hints = this.add
       .text(width / 2, height - 26,
         '1P:  W S A D 选择   SPACE 确定        2P:  ↑ ↓ ← → 选择   ENTER 确定', {
           fontFamily: CN_FONT,
@@ -274,7 +340,7 @@ export default class SelectScene extends Phaser.Scene {
   }
 
   update() {
-    if (this.starting) return;
+    if (this.starting || this.introActive) return;
 
     let changed = false;
     this.p.forEach((player, id) => {

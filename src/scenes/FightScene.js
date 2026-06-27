@@ -5,6 +5,9 @@ import { PIXEL_FONT } from '../fonts.js';
 import { playUi, stopMenuBgm } from '../audio.js';
 
 const ROUND_TIME_MS = 60000;
+// Pre-fight ceremony: hold the action while the "Round 1, Fight!" announcer
+// plays (~4s) before the round goes live.
+const INTRO_MS = 4000;
 
 // HUD geometry (mirrors the old CSS header layout).
 const BAR_Y = 20;
@@ -45,10 +48,66 @@ export default class FightScene extends Phaser.Scene {
     this.createDustTexture();
     this.createHud();
 
-    // Hand off from the menu music to the fight: cut the BGM, then the
-    // "Round 1, Ready Go!" announcer plays only here as the fight opens.
+    // Hand off from the menu music to the fight: cut the BGM, then run the
+    // opening ceremony (announcer + "Round 1"/"Fight!" titles) before the
+    // round goes live.
     stopMenuBgm();
+    this.startIntro();
+  }
+
+  // The opening ceremony: freeze the action while the announcer plays, flashing
+  // "Round 1" then "Fight!" in the centre of the screen. After INTRO_MS the
+  // round goes live.
+  startIntro() {
+    const { width, height } = this.scale;
+    this.introActive = true;
+
+    // The "Round 1, Fight!" announcer plays only here, as the fight opens —
+    // never on the title or select screens.
     playUi(this, 'start');
+
+    const flash = (text, delay, holdMs) => {
+      this.time.delayedCall(delay, () => {
+        const label = this.add
+          .text(width / 2, height / 2, text, {
+            fontFamily: PIXEL_FONT,
+            fontSize: '72px',
+            fontStyle: 'bold',
+            color: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 8,
+            align: 'center',
+          })
+          .setOrigin(0.5)
+          .setDepth(30)
+          .setScale(0.3)
+          .setAlpha(0);
+
+        // Pop in...
+        this.tweens.add({
+          targets: label,
+          scale: 1,
+          alpha: 1,
+          duration: 250,
+          ease: 'Back.easeOut',
+        });
+        // ...hold, then fade away.
+        this.tweens.add({
+          targets: label,
+          alpha: 0,
+          duration: 300,
+          delay: holdMs,
+          onComplete: () => label.destroy(),
+        });
+      });
+    };
+
+    // "Round 1" first, "Fight!" second, then the round begins at INTRO_MS.
+    flash('Round 1', 0, 1500);
+    flash('Fight!', 2200, 1200);
+    this.time.delayedCall(INTRO_MS, () => {
+      this.introActive = false;
+    });
   }
 
   // Freeze the whole fight for a few frames so hits land with weight. Stacking
@@ -148,6 +207,9 @@ export default class FightScene extends Phaser.Scene {
   }
 
   update(_time, delta) {
+    // Opening ceremony: keep both fighters frozen until the announcer finishes.
+    if (this.introActive) return;
+
     // Hitstop: hold the action (and the frame on screen) frozen for a beat so
     // the hit reads as impact. Tween-driven FX/HP bars keep animating.
     if (this.hitstop > 0) {

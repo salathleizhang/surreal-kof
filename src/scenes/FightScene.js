@@ -26,6 +26,8 @@ export default class FightScene extends Phaser.Scene {
     // Characters chosen on the select screen (default to Kyo if launched
     // directly, e.g. during development).
     const selections = (data && data.selections) || [DEFAULT_CHARACTER, DEFAULT_CHARACTER];
+    // In single-player mode, player 2 is controlled by the AI.
+    const mode = (data && data.mode) || 'versus';
     const spawns = [
       { id: 0, x: 200, y: 0, width: 120, height: 200 },
       { id: 1, x: 900, y: 0, width: 120, height: 200 },
@@ -33,7 +35,8 @@ export default class FightScene extends Phaser.Scene {
 
     this.players = spawns.map((spawn) => {
       const CharCls = (CHARACTERS[selections[spawn.id]] || CHARACTERS[DEFAULT_CHARACTER]).cls;
-      return new CharCls(this, spawn);
+      const ai = mode === 'single' && spawn.id === 1;
+      return new CharCls(this, { ...spawn, ai });
     });
 
     this.timeLeft = ROUND_TIME_MS;

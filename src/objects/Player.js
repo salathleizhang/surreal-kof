@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import AiController from './AiController.js';
 
 const { KeyCodes } = Phaser.Input.Keyboard;
 
@@ -66,7 +67,14 @@ export default class Player {
     this.hpGreen = 100;
     this.hpRed = 100;
 
-    this.keys = scene.input.keyboard.addKeys(KEY_LAYOUTS[this.id]);
+    // In single-player mode, player 2 is driven by the AI instead of a second
+    // human, so it asks an AiController for its input rather than the keyboard.
+    this.isAi = !!info.ai;
+    if (this.isAi) {
+      this.ai = new AiController(this);
+    } else {
+      this.keys = scene.input.keyboard.addKeys(KEY_LAYOUTS[this.id]);
+    }
 
     // One sprite per player; texture is swapped every frame in render().
     // Textures are registered by the PreloadScene before players are created.
@@ -86,12 +94,22 @@ export default class Player {
     this.render();
   }
 
-  update_control() {
+  // Abstract the input source so the FSM below is identical for human and AI
+  // players: both produce a {up, left, right, attack} boolean snapshot.
+  read_input() {
+    if (this.isAi) return this.ai.getInput();
     const { up, left, right, attack } = this.keys;
-    const w = up.isDown;
-    const a = left.isDown;
-    const d = right.isDown;
-    const space = attack.isDown;
+    return {
+      up: up.isDown, left: left.isDown, right: right.isDown, attack: attack.isDown,
+    };
+  }
+
+  update_control() {
+    const input = this.read_input();
+    const w = input.up;
+    const a = input.left;
+    const d = input.right;
+    const space = input.attack;
 
     // State transitions are only allowed from idle / moving.
     if (this.status === STATUS.IDLE || this.status === STATUS.MOVE) {

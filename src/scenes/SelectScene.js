@@ -33,8 +33,11 @@ export default class SelectScene extends Phaser.Scene {
     super('select');
   }
 
-  create() {
+  create(data) {
     const { width, height } = this.scale;
+
+    // 'single' = 1P vs CPU, 'versus' = two humans (the original mode).
+    this.mode = (data && data.mode) || 'versus';
 
     this.add
       .image(0, 0, 'bg-0')
@@ -67,13 +70,24 @@ export default class SelectScene extends Phaser.Scene {
       col: id === 0 ? 0 : SELECT_GRID.cols - 1, // 1P starts left, 2P right
       row: 0,
       confirmed: false,
+      isCpu: false,
     }));
+
+    // In single-player mode 2P is the CPU: it picks a fighter on its own and is
+    // locked in from the start, so the round begins as soon as 1P confirms.
+    if (this.mode === 'single') {
+      const cpu = this.p[1];
+      cpu.isCpu = true;
+      cpu.confirmed = true;
+      cpu.col = Phaser.Math.Between(0, SELECT_GRID.cols - 1);
+      cpu.row = Phaser.Math.Between(0, SELECT_GRID.rows - 1);
+    }
 
     this.cursorGfx = this.add.graphics().setDepth(15);
 
-    // Small "1P"/"2P" tab that rides above each cursor.
-    this.cursorTags = this.p.map((_, id) => this.add
-      .text(0, 0, `${id + 1}P`, {
+    // Small "1P"/"2P"/"CPU" tab that rides above each cursor.
+    this.cursorTags = this.p.map((player, id) => this.add
+      .text(0, 0, player.isCpu ? 'CPU' : `${id + 1}P`, {
         fontFamily: PIXEL_FONT,
         fontSize: '20px',
         fontStyle: 'bold',
@@ -199,7 +213,7 @@ export default class SelectScene extends Phaser.Scene {
     this.tweens.killTweensOf(fig.figure);
     fig.figure.x = fig.homeX;
     this.applyFigureTexture(id);
-    fig.status.setText(this.p[id].confirmed ? 'OK!' : '');
+    fig.status.setText(this.p[id].isCpu ? 'CPU' : (this.p[id].confirmed ? 'OK!' : ''));
   }
 
   applyFigureTexture(id) {
@@ -270,6 +284,9 @@ export default class SelectScene extends Phaser.Scene {
   }
 
   handlePlayer(player, id) {
+    // The CPU slot in single-player mode takes no input.
+    if (player.isCpu) return false;
+
     const k = player.keys;
     let changed = false;
 
@@ -324,6 +341,6 @@ export default class SelectScene extends Phaser.Scene {
     flash.setScale(0.5);
     this.tweens.add({ targets: flash, scale: 1, duration: 350, ease: 'Back.out' });
 
-    this.time.delayedCall(700, () => this.scene.start('fight', { selections }));
+    this.time.delayedCall(700, () => this.scene.start('fight', { selections, mode: this.mode }));
   }
 }

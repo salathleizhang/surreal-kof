@@ -74,12 +74,14 @@ export default class SelectScene extends Phaser.Scene {
       isCpu: false,
     }));
 
-    // In single-player mode 2P is the CPU: it picks a fighter on its own and is
-    // locked in from the start, so the round begins as soon as 1P confirms.
+    // In single-player mode 2P is the CPU. Instead of snapping straight to a
+    // fighter, it pretends to be a human picking: once the intro finishes it
+    // wanders the grid for a few random hops (see maybeStartCpuSelection) and
+    // then locks in whatever it landed on.
     if (this.mode === 'single') {
       const cpu = this.p[1];
       cpu.isCpu = true;
-      cpu.confirmed = true;
+      cpu.confirmed = false;
       cpu.col = Phaser.Math.Between(0, SELECT_GRID.cols - 1);
       cpu.row = Phaser.Math.Between(0, SELECT_GRID.rows - 1);
     }
@@ -135,6 +137,7 @@ export default class SelectScene extends Phaser.Scene {
           duration: 200,
         });
         this.introActive = false;
+        this.maybeStartCpuSelection();
       },
     });
 
@@ -282,7 +285,65 @@ export default class SelectScene extends Phaser.Scene {
     this.tweens.killTweensOf(fig.figure);
     fig.figure.x = fig.homeX;
     this.applyFigureTexture(id);
-    fig.status.setText(this.p[id].isCpu ? 'CPU' : (this.p[id].confirmed ? 'OK!' : ''));
+    fig.status.setText(this.p[id].confirmed ? 'OK!' : '');
+  }
+
+  // Make the CPU look like a human at the select screen: hop around the grid a
+  // random number of times (each hop animates + clicks just like a real cursor)
+  // and then confirm whatever fighter it ended up on.
+  maybeStartCpuSelection() {
+    if (this.mode !== 'single') return;
+    const id = 1;
+    const cpu = this.p[id];
+    let movesLeft = Phaser.Math.Between(4, 9);
+
+    const step = () => {
+      if (this.starting || cpu.confirmed) return;
+      if (movesLeft > 0) {
+        movesLeft -= 1;
+        this.cpuRandomMove(id);
+        this.time.delayedCall(Phaser.Math.Between(220, 440), step);
+      } else {
+        // Settle on the current pick — same lock-in as a human pressing confirm.
+        cpu.confirmed = true;
+        this.refreshFigure(id);
+        this.drawCursors();
+        playUi(this, 'select');
+      }
+    };
+
+    // A beat of "thinking" before the first move.
+    this.time.delayedCall(Phaser.Math.Between(350, 650), step);
+  }
+
+  // Step the CPU cursor one cell in a random valid direction, avoiding an
+  // immediate reversal so it reads as deliberate browsing rather than jitter.
+  cpuRandomMove(id) {
+    const player = this.p[id];
+    const { cols, rows } = SELECT_GRID;
+    let moves = [];
+    if (player.col > 0) moves.push(['col', -1]);
+    if (player.col < cols - 1) moves.push(['col', 1]);
+    if (player.row > 0) moves.push(['row', -1]);
+    if (player.row < rows - 1) moves.push(['row', 1]);
+
+    if (this.cpuLastMove) {
+      const [lastAxis, lastDelta] = this.cpuLastMove;
+      const noReverse = moves.filter(
+        ([axis, delta]) => !(axis === lastAxis && delta === -lastDelta),
+      );
+      if (noReverse.length) moves = noReverse;
+    }
+    if (!moves.length) return;
+
+    const move = Phaser.Utils.Array.GetRandom(moves);
+    const [axis, delta] = move;
+    player[axis] += delta;
+    this.cpuLastMove = move;
+
+    this.swapFigure(id);
+    playUi(this, 'cursor');
+    this.drawCursors();
   }
 
   applyFigureTexture(id) {

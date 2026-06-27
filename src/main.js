@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
 import PreloadScene from './scenes/PreloadScene.js';
+import TitleScene from './scenes/TitleScene.js';
+import SelectScene from './scenes/SelectScene.js';
 import FightScene from './scenes/FightScene.js';
 
 // The original game was authored against a fixed 1280x720 stage.
@@ -19,7 +21,7 @@ const config = {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
-  scene: [PreloadScene, FightScene],
+  scene: [PreloadScene, TitleScene, SelectScene, FightScene],
 };
 
 // eslint-disable-next-line no-new

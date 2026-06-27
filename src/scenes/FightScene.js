@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
-import Kyo from '../objects/Kyo.js';
 import { STATUS } from '../objects/Player.js';
+import { CHARACTERS, DEFAULT_CHARACTER } from '../objects/roster.js';
 
 const ROUND_TIME_MS = 60000;
 
@@ -16,16 +16,24 @@ export default class FightScene extends Phaser.Scene {
     super('fight');
   }
 
-  create() {
+  create(data) {
     const { width, height } = this.scale;
 
     // Background: first decoded frame of the stage GIF, stretched to fill.
     this.add.image(0, 0, 'bg-0').setOrigin(0, 0).setDisplaySize(width, height).setDepth(0);
 
-    this.players = [
-      new Kyo(this, { id: 0, x: 200, y: 0, width: 120, height: 200 }),
-      new Kyo(this, { id: 1, x: 900, y: 0, width: 120, height: 200 }),
+    // Characters chosen on the select screen (default to Kyo if launched
+    // directly, e.g. during development).
+    const selections = (data && data.selections) || [DEFAULT_CHARACTER, DEFAULT_CHARACTER];
+    const spawns = [
+      { id: 0, x: 200, y: 0, width: 120, height: 200 },
+      { id: 1, x: 900, y: 0, width: 120, height: 200 },
     ];
+
+    this.players = spawns.map((spawn) => {
+      const CharCls = (CHARACTERS[selections[spawn.id]] || CHARACTERS[DEFAULT_CHARACTER]).cls;
+      return new CharCls(this, spawn);
+    });
 
     this.timeLeft = ROUND_TIME_MS;
     this.createHud();

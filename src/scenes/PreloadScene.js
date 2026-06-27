@@ -37,7 +37,7 @@ export default class PreloadScene extends Phaser.Scene {
       // they can cycle and detect when an animation finishes.
       this.registry.set('kyoFrameCounts', kyoFrameCounts);
 
-      this.scene.start('fight');
+      this.scene.start('title');
     } catch (err) {
       console.error(err);
       this.loadingText.setText('Failed to load assets.\nSee console for details.');

@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:music": "bash scripts/dev-chrome.sh",
     "local-api": "node server/local-api.mjs",
     "build": "vite build",
     "preview": "vite preview"

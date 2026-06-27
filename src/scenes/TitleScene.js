@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { PIXEL_FONT } from '../fonts.js';
 import { setVerticalGradient } from '../utils/text.js';
-import { playUi } from '../audio.js';
+import { playUi, startMenuBgm } from '../audio.js';
 
 const { JustDown, KeyCodes } = Phaser.Input.Keyboard;
 
@@ -27,33 +27,41 @@ export default class TitleScene extends Phaser.Scene {
       .setDepth(0)
       .setTint(0x556699); // darken/cool the stage so the logo reads
 
+    this.add
+      .image(width / 2, 150, 'title-logo')
+      .setOrigin(0.5)
+      .setDisplaySize(430, 430)
+      .setDepth(2);
+
     const kingOf = this.add
-      .text(width / 2, height / 2 - 110, 'THE KING OF', {
+      .text(width / 2, height / 2 + 18, 'THE KING OF', {
         fontFamily: PIXEL_FONT,
-        fontSize: '48px',
+        fontSize: '24px',
         stroke: '#7a1f1f',
-        strokeThickness: 8,
+        strokeThickness: 5,
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setDepth(3);
     // Metallic gold: bright highlight at top fading to a dark amber base.
     setVerticalGradient(kingOf, ['#fff7c0', '#ffd23f', '#b8741a']);
 
     const fighters = this.add
-      .text(width / 2, height / 2 - 20, 'FIGHTERS  AI', {
+      .text(width / 2, height / 2 + 62, 'FIGHTERS  AI', {
         fontFamily: PIXEL_FONT,
-        fontSize: '72px',
+        fontSize: '38px',
         fontStyle: 'bold',
         stroke: '#c01b1b',
-        strokeThickness: 12,
+        strokeThickness: 7,
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setDepth(3);
     // Chrome white fading into a cool steel blue.
     setVerticalGradient(fighters, ['#ffffff', '#e6f0ff', '#7fb0e0']);
 
     // Play-mode menu (navigate with W/S or ↑/↓, confirm with Enter/Space).
     this.selected = 0;
     this.menuItems = MENU.map((item, i) => this.add
-      .text(width / 2, height / 2 + 70 + i * 56, item.label, {
+      .text(width / 2, height / 2 + 132 + i * 54, item.label, {
         fontFamily: PIXEL_FONT,
         fontSize: '30px',
         fontStyle: 'bold',
@@ -87,6 +95,9 @@ export default class TitleScene extends Phaser.Scene {
 
     this.locked = false;
     this.refreshMenu();
+
+    // Menu theme: starts here and keeps playing through the select screen.
+    startMenuBgm(this);
   }
 
   refreshMenu() {

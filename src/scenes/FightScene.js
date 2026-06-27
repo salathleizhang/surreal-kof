@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { STATUS } from '../objects/Player.js';
 import { CHARACTERS, DEFAULT_CHARACTER } from '../objects/roster.js';
 import { PIXEL_FONT } from '../fonts.js';
-import { playUi } from '../audio.js';
+import { playUi, stopMenuBgm } from '../audio.js';
 
 const ROUND_TIME_MS = 60000;
 
@@ -45,8 +45,9 @@ export default class FightScene extends Phaser.Scene {
     this.createDustTexture();
     this.createHud();
 
-    // The "Round 1, Ready Go!" announcer plays only here, as the fight opens —
-    // never on the title or select screens.
+    // Hand off from the menu music to the fight: cut the BGM, then the
+    // "Round 1, Ready Go!" announcer plays only here as the fight opens.
+    stopMenuBgm();
     playUi(this, 'start');
   }
 

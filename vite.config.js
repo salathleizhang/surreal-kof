@@ -5,7 +5,9 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   base: './',
   server: {
-    open: true,
+    // `npm run dev` opens the default browser; the `dev:music` launcher sets
+    // NO_OPEN so it can open Chrome itself (with the autoplay flag) instead.
+    open: !process.env.NO_OPEN,
   },
   build: {
     outDir: 'dist',

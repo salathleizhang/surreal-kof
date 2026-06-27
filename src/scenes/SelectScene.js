@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { CHARACTERS, SELECT_GRID } from '../objects/roster.js';
 import { PIXEL_FONT, PIXEL_FONT_CN } from '../fonts.js';
 import { setVerticalGradient } from '../utils/text.js';
-import { playUi } from '../audio.js';
+import { playUi, startMenuBgm } from '../audio.js';
 
 const { JustDown } = Phaser.Input.Keyboard;
 const { KeyCodes } = Phaser.Input.Keyboard;
@@ -100,6 +100,9 @@ export default class SelectScene extends Phaser.Scene {
 
     this.p.forEach((_, id) => this.refreshFigure(id));
     this.drawCursors();
+
+    // Keep the menu theme going (no-op if it's already playing from the title).
+    startMenuBgm(this);
   }
 
   buildGrid() {

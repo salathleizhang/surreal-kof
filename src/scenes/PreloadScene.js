@@ -26,6 +26,7 @@ export default class PreloadScene extends Phaser.Scene {
     // global audio cache before any menu scene runs. (The GIF art is decoded
     // separately in create().)
     this.load.image('select-bg', 'assets/background/select-bg.png');
+    this.load.image('title-logo', 'assets/logo/kof-abstract-middle-finger-transparent.png');
     loadUiSounds(this);
   }
 

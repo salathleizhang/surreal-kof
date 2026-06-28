@@ -25,12 +25,16 @@ landmarks, while all action decisions below are transparent geometric rules.
 """
 
 import argparse
+import json
 import math
 import sys
 import time
 from collections import deque
 from dataclasses import dataclass
-from typing import Deque, Dict, Iterable, List, Optional, Sequence, Tuple
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from pathlib import Path
+from typing import Deque, Dict, Iterable, Optional, Sequence, Tuple
+from urllib.parse import urlparse
 
 import cv2
 import mediapipe as mp
@@ -52,6 +56,15 @@ MIN_DETECTION_CONFIDENCE = 0.55
 MIN_TRACKING_CONFIDENCE = 0.55
 POSE_VISIBILITY_MIN = 0.55
 MIN_SHOULDER_WIDTH = 0.075
+MIN_FRAME_DELTA_SECONDS = 1.0 / 120.0
+MAX_FRAME_DELTA_SECONDS = 0.20
+
+# Browser mode. The service only listens on loopback by default. Chrome owns
+# camera capture, while Python receives compressed frames over localhost.
+WEB_HOST = "127.0.0.1"
+WEB_PORT = 8765
+WEB_MAX_FRAME_BYTES = 2 * 1024 * 1024
+WEB_JPEG_QUALITY = 84
 
 # Dynamic detectors use recent history. At ~30 FPS, 8 frames is ~0.27 seconds.
 WINDOW_FRAMES = 8
@@ -84,6 +97,7 @@ MIDDLE_RELEASE_FRAMES = 3
 FINGER_STRAIGHT_ANGLE_MIN = 155.0
 FINGER_CURLED_ANGLE_MAX = 145.0
 MIDDLE_TIP_PALM_RATIO_MIN = 1.15
+MIDDLE_TIP_WRIST_RATIO_MIN = 1.06
 CURLED_TIP_PALM_RATIO_MAX = 1.35
 THUMB_TIP_PALM_RATIO_MAX = 1.15
 THUMB_TIP_INDEX_RATIO_MAX = 0.92
@@ -140,13 +154,6 @@ def joint_angle(a: np.ndarray, b: np.ndarray, c: np.ndarray) -> float:
     if denom < 1e-8:
         return 0.0
     return math.degrees(math.acos(float(np.clip(np.dot(ba, bc) / denom, -1, 1))))
-
-
-def top_mean(values: Sequence[float], count: int = PEAK_AVERAGE_FRAMES) -> float:
-    if not values:
-        return 0.0
-    ordered = sorted(values, reverse=True)
-    return float(np.mean(ordered[: min(count, len(ordered))]))
 
 
 def ordered_gain(values: Sequence[float]) -> float:
@@ -233,7 +240,13 @@ class PoseFeatures:
         )
 
         if self.previous_points is not None and self.previous_timestamp is not None:
-            dt = float(np.clip(now - self.previous_timestamp, 1.0 / 120.0, 0.20))
+            dt = float(
+                np.clip(
+                    now - self.previous_timestamp,
+                    MIN_FRAME_DELTA_SECONDS,
+                    MAX_FRAME_DELTA_SECONDS,
+                )
+            )
             scale = max(shoulder_width, MIN_SHOULDER_WIDTH)
 
             def velocity(index: int) -> np.ndarray:
@@ -329,7 +342,7 @@ class MiddleFingerDetector:
                 and dip_angle >= FINGER_STRAIGHT_ANGLE_MIN
                 and tip_palm_ratio >= MIDDLE_TIP_PALM_RATIO_MIN
                 and distance(points[tip], points[0])
-                > 1.06 * distance(points[pip], points[0])
+                > MIDDLE_TIP_WRIST_RATIO_MIN * distance(points[pip], points[0])
             )
             curled = (
                 min(pip_angle, dip_angle) <= FINGER_CURLED_ANGLE_MAX
@@ -582,10 +595,11 @@ def draw_overlay(
     now: float,
     last_event: Optional[str],
     last_event_time: float,
+    controls_text: str = "Q/Esc quit    R reset counters",
 ) -> None:
     height, width = frame.shape[:2]
     panel_width = min(PANEL_WIDTH, width)
-    panel_height = min(310, height)
+    panel_height = min(320, height)
     layer = frame.copy()
     cv2.rectangle(layer, (0, 0), (panel_width, panel_height), (15, 20, 28), -1)
     cv2.addWeighted(layer, OVERLAY_ALPHA, frame, 1.0 - OVERLAY_ALPHA, 0, frame)
@@ -593,10 +607,28 @@ def draw_overlay(
     put_text(frame, "RULE-BASED ACTION RECOGNITION", 14, 24, COLOR_WHITE, 0.55, 2)
     put_text(frame, "FPS {:4.1f}  window {}f  speed unit: shoulder-width/s".format(fps, WINDOW_FRAMES), 14, 46, COLOR_MUTED, 0.40)
 
+    if iron_active:
+        current_action = "IRON MOUNTAIN"
+    elif elbow_active:
+        current_action = "ELBOW STRIKE"
+    elif middle_active:
+        current_action = "MIDDLE FINGER"
+    else:
+        current_action = "NO ACTION"
+    put_text(
+        frame,
+        "CURRENT: {}".format(current_action),
+        14,
+        68,
+        COLOR_ACTIVE if current_action != "NO ACTION" else COLOR_MUTED,
+        0.48,
+        1,
+    )
+
     rows = (
-        ("middle_finger", "MIDDLE FINGER", middle_active, 72),
-        ("elbow_strike", "ELBOW STRIKE", elbow_active, 104),
-        ("iron_mountain", "IRON MOUNTAIN", iron_active, 136),
+        ("middle_finger", "MIDDLE FINGER", middle_active, 94),
+        ("elbow_strike", "ELBOW STRIKE", elbow_active, 126),
+        ("iron_mountain", "IRON MOUNTAIN", iron_active, 158),
     )
     for action, label, active, y in rows:
         status, color = action_status(action, active, cooldowns, now)
@@ -608,7 +640,7 @@ def draw_overlay(
             middle_metrics.middle_angle, middle_metrics.folded_count
         ),
         14,
-        170,
+        190,
         COLOR_MUTED,
         0.43,
     )
@@ -625,7 +657,7 @@ def draw_overlay(
             angle_mark,
         ),
         14,
-        194,
+        214,
         COLOR_MUTED,
         0.42,
     )
@@ -638,7 +670,7 @@ def draw_overlay(
             IRON_HIP_SPEED_MIN,
         ),
         14,
-        218,
+        238,
         COLOR_MUTED,
         0.43,
     )
@@ -653,11 +685,11 @@ def draw_overlay(
             IRON_HORIZONTAL_RATIO_MIN,
         ),
         14,
-        242,
+        262,
         COLOR_MUTED,
         0.39,
     )
-    put_text(frame, "Q/Esc quit    R reset counters", 14, 274, COLOR_WHITE, 0.44)
+    put_text(frame, controls_text, 14, 298, COLOR_WHITE, 0.44)
 
     if last_event and now - last_event_time <= EVENT_FLASH_SECONDS:
         cv2.rectangle(frame, (4, 4), (width - 5, height - 5), COLOR_ALERT, 8)
@@ -666,6 +698,219 @@ def draw_overlay(
         x = max(10, (width - text_width) // 2)
         y = max(panel_height + text_height + 15, height - 38)
         put_text(frame, label, x, min(y, height - 18), COLOR_ACTIVE, 1.1, 3)
+
+
+class RecognitionEngine:
+    """Stateful Holistic pipeline shared by desktop-camera and browser modes."""
+
+    ACTIONS = ("middle_finger", "elbow_strike", "iron_mountain")
+
+    def __init__(self, controls_text: str = "Q/Esc quit    R reset counters") -> None:
+        self.controls_text = controls_text
+        self.holistic = mp_holistic.Holistic(
+            static_image_mode=False,
+            model_complexity=MODEL_COMPLEXITY,
+            smooth_landmarks=True,
+            enable_segmentation=False,
+            refine_face_landmarks=False,
+            min_detection_confidence=MIN_DETECTION_CONFIDENCE,
+            min_tracking_confidence=MIN_TRACKING_CONFIDENCE,
+        )
+        self.feature_extractor = PoseFeatures()
+        self.middle_detector = MiddleFingerDetector()
+        self.elbow_detector = ElbowStrikeDetector()
+        self.iron_detector = IronMountainDetector()
+        self.window: Deque[FeatureSample] = deque(maxlen=WINDOW_FRAMES)
+        self.cooldowns = CooldownManager(self.ACTIONS)
+        self.counts = {action: 0 for action in self.ACTIONS}
+        self.last_event: Optional[str] = None
+        self.last_event_time = -math.inf
+        self.fps = 0.0
+        self.processed_frames = 0
+        self.pose_frames = 0
+        self.hand_frames = 0
+        self.started = time.perf_counter()
+        self.previous_frame_time = self.started
+
+    def reset_counts(self) -> None:
+        for action in self.counts:
+            self.counts[action] = 0
+        self.cooldowns.reset()
+        self.last_event = None
+
+    def process(
+        self, frame: np.ndarray, mirror: bool = True, annotate: bool = True
+    ) -> np.ndarray:
+        if mirror:
+            frame = cv2.flip(frame, 1)
+
+        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        rgb.flags.writeable = False
+        results = self.holistic.process(rgb)
+        now = time.perf_counter()
+
+        pose_landmarks = results.pose_landmarks.landmark if results.pose_landmarks else None
+        sample = self.feature_extractor.update(pose_landmarks, now)
+        self.window.append(sample)
+
+        hands = (
+            results.left_hand_landmarks.landmark
+            if results.left_hand_landmarks
+            else None,
+            results.right_hand_landmarks.landmark
+            if results.right_hand_landmarks
+            else None,
+        )
+        middle_active, middle_trigger, middle_metrics = self.middle_detector.update(hands)
+
+        # Whole-torso movement wins. Suppression also prevents the remaining
+        # window tail from becoming a delayed elbow event.
+        iron_active, iron_trigger, iron_metrics = self.iron_detector.evaluate(self.window)
+        elbow_active, elbow_trigger, elbow_metrics = self.elbow_detector.evaluate(
+            self.window, suppressed=iron_active
+        )
+
+        for action, triggered in (
+            ("middle_finger", middle_trigger),
+            ("iron_mountain", iron_trigger),
+            ("elbow_strike", elbow_trigger),
+        ):
+            if triggered and self.cooldowns.trigger(action, now):
+                self.counts[action] += 1
+                self.last_event = action
+                self.last_event_time = now
+
+        frame_delta = max(now - self.previous_frame_time, 1e-6)
+        instant_fps = 1.0 / frame_delta
+        self.fps = instant_fps if self.fps <= 0 else self.fps * 0.90 + instant_fps * 0.10
+        self.previous_frame_time = now
+        self.processed_frames += 1
+        self.pose_frames += int(results.pose_landmarks is not None)
+        self.hand_frames += int(
+            results.left_hand_landmarks is not None
+            or results.right_hand_landmarks is not None
+        )
+
+        if annotate:
+            draw_skeleton(frame, results)
+            draw_overlay(
+                frame,
+                self.fps,
+                self.counts,
+                middle_active,
+                middle_metrics,
+                elbow_active,
+                elbow_metrics,
+                iron_active,
+                iron_metrics,
+                self.cooldowns,
+                now,
+                self.last_event,
+                self.last_event_time,
+                controls_text=self.controls_text,
+            )
+        return frame
+
+    def close(self) -> None:
+        self.holistic.close()
+
+
+def make_web_handler(engine: RecognitionEngine, page: bytes):
+    """Build a synchronous request handler so MediaPipe stays on one thread."""
+
+    class ActionWebHandler(BaseHTTPRequestHandler):
+        server_version = "KofActionDemo/1.0"
+
+        def send_bytes(
+            self, status: int, content_type: str, payload: bytes, **headers: str
+        ) -> None:
+            self.send_response(status)
+            self.send_header("Content-Type", content_type)
+            self.send_header("Content-Length", str(len(payload)))
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("X-Content-Type-Options", "nosniff")
+            for name, value in headers.items():
+                self.send_header(name.replace("_", "-"), value)
+            self.end_headers()
+            self.wfile.write(payload)
+
+        def send_json(self, status: int, data: Dict) -> None:
+            self.send_bytes(
+                status,
+                "application/json; charset=utf-8",
+                json.dumps(data, ensure_ascii=False).encode("utf-8"),
+            )
+
+        def do_GET(self) -> None:  # noqa: N802 - BaseHTTPRequestHandler API
+            path = urlparse(self.path).path
+            if path in ("/", "/action"):
+                self.send_bytes(200, "text/html; charset=utf-8", page)
+                return
+            if path == "/health":
+                self.send_json(
+                    200,
+                    {
+                        "status": "ok",
+                        "model": "mediapipe-holistic",
+                        "frame_width": FRAME_WIDTH,
+                        "frame_height": FRAME_HEIGHT,
+                    },
+                )
+                return
+            if path == "/favicon.ico":
+                self.send_bytes(204, "image/x-icon", b"")
+                return
+            self.send_json(404, {"error": "not found"})
+
+        def do_POST(self) -> None:  # noqa: N802 - BaseHTTPRequestHandler API
+            path = urlparse(self.path).path
+            if path == "/api/reset":
+                engine.reset_counts()
+                self.send_json(200, {"status": "ok", "counts": engine.counts})
+                return
+            if path != "/api/frame":
+                self.send_json(404, {"error": "not found"})
+                return
+
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+            except ValueError:
+                length = 0
+            if length <= 0 or length > WEB_MAX_FRAME_BYTES:
+                self.send_json(413, {"error": "invalid frame size"})
+                return
+
+            encoded = np.frombuffer(self.rfile.read(length), dtype=np.uint8)
+            frame = cv2.imdecode(encoded, cv2.IMREAD_COLOR)
+            if frame is None:
+                self.send_json(400, {"error": "invalid JPEG frame"})
+                return
+
+            try:
+                annotated = engine.process(frame, mirror=True, annotate=True)
+                ok, output = cv2.imencode(
+                    ".jpg",
+                    annotated,
+                    (cv2.IMWRITE_JPEG_QUALITY, WEB_JPEG_QUALITY),
+                )
+                if not ok:
+                    raise RuntimeError("OpenCV could not encode output frame")
+            except Exception as error:  # keep the page alive and expose the cause
+                self.send_json(500, {"error": str(error)})
+                return
+
+            self.send_bytes(
+                200,
+                "image/jpeg",
+                output.tobytes(),
+                X_Recognition_FPS="{:.1f}".format(engine.fps),
+            )
+
+        def log_message(self, message: str, *args) -> None:
+            if urlparse(self.path).path != "/api/frame":
+                super().log_message(message, *args)
+
+    return ActionWebHandler
 
 
 def open_camera(index: int) -> cv2.VideoCapture:
@@ -681,6 +926,22 @@ def open_camera(index: int) -> cv2.VideoCapture:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--web",
+        action="store_true",
+        help="serve a browser-camera version on localhost instead of opening OpenCV",
+    )
+    parser.add_argument(
+        "--web-host",
+        default=WEB_HOST,
+        help="host used by --web (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--web-port",
+        type=int,
+        default=WEB_PORT,
+        help="port used by --web (default: %(default)s)",
+    )
     parser.add_argument(
         "--check-camera",
         action="store_true",
@@ -701,8 +962,36 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def run() -> int:
-    args = parse_args()
+def run_web(args: argparse.Namespace) -> int:
+    page_path = Path(__file__).with_name("action_web.html")
+    if not page_path.is_file():
+        print("Missing browser page: {}".format(page_path), file=sys.stderr)
+        return 2
+
+    engine: Optional[RecognitionEngine] = None
+    server: Optional[HTTPServer] = None
+    try:
+        engine = RecognitionEngine(controls_text="Use page controls to stop / reset")
+        handler = make_web_handler(engine, page_path.read_bytes())
+        server = HTTPServer((args.web_host, args.web_port), handler)
+        url = "http://{}:{}/".format(args.web_host, args.web_port)
+        print("KOF AI browser demo: {}".format(url), flush=True)
+        print("Press Ctrl+C to stop the service.", flush=True)
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    except OSError as error:
+        print("Could not start web service: {}".format(error), file=sys.stderr)
+        return 2
+    finally:
+        if server is not None:
+            server.server_close()
+        if engine is not None:
+            engine.close()
+    return 0
+
+
+def run_desktop(args: argparse.Namespace) -> int:
     capture = open_camera(args.camera_index)
     capture.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_WIDTH)
     capture.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
@@ -715,135 +1004,51 @@ def run() -> int:
         )
         return 2
 
-    feature_extractor = PoseFeatures()
-    middle_detector = MiddleFingerDetector()
-    elbow_detector = ElbowStrikeDetector()
-    iron_detector = IronMountainDetector()
-    window: Deque[FeatureSample] = deque(maxlen=WINDOW_FRAMES)
-    cooldowns = CooldownManager(("middle_finger", "elbow_strike", "iron_mountain"))
-    counts = {"middle_finger": 0, "elbow_strike": 0, "iron_mountain": 0}
-    last_event: Optional[str] = None
-    last_event_time = -math.inf
-    fps = 0.0
-    processed_frames = 0
-    pose_frames = 0
-    hand_frames = 0
-    started = time.perf_counter()
-    previous_frame_time = started
-
+    engine: Optional[RecognitionEngine] = None
     try:
-        with mp_holistic.Holistic(
-            static_image_mode=False,
-            model_complexity=MODEL_COMPLEXITY,
-            smooth_landmarks=True,
-            enable_segmentation=False,
-            refine_face_landmarks=False,
-            min_detection_confidence=MIN_DETECTION_CONFIDENCE,
-            min_tracking_confidence=MIN_TRACKING_CONFIDENCE,
-        ) as holistic:
-            while capture.isOpened():
-                ok, frame = capture.read()
-                if not ok:
-                    print("Camera returned an empty frame.", file=sys.stderr)
-                    break
+        engine = RecognitionEngine()
+        while capture.isOpened():
+            ok, frame = capture.read()
+            if not ok:
+                print("Camera returned an empty frame.", file=sys.stderr)
+                break
 
-                frame = cv2.flip(frame, 1)
-                rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                rgb.flags.writeable = False
-                results = holistic.process(rgb)
-                now = time.perf_counter()
-
-                pose_landmarks = (
-                    results.pose_landmarks.landmark if results.pose_landmarks else None
-                )
-                sample = feature_extractor.update(pose_landmarks, now)
-                window.append(sample)
-
-                hands = (
-                    results.left_hand_landmarks.landmark
-                    if results.left_hand_landmarks
-                    else None,
-                    results.right_hand_landmarks.landmark
-                    if results.right_hand_landmarks
-                    else None,
-                )
-                middle_active, middle_trigger, middle_metrics = middle_detector.update(hands)
-
-                # Global torso motion wins. The elbow detector is explicitly
-                # suppressed while it is active so a shoulder charge cannot
-                # produce a delayed elbow event from the same motion window.
-                iron_active, iron_trigger, iron_metrics = iron_detector.evaluate(window)
-                elbow_active, elbow_trigger, elbow_metrics = elbow_detector.evaluate(
-                    window, suppressed=iron_active
-                )
-
-                for action, triggered in (
-                    ("middle_finger", middle_trigger),
-                    ("iron_mountain", iron_trigger),
-                    ("elbow_strike", elbow_trigger),
-                ):
-                    if triggered and cooldowns.trigger(action, now):
-                        counts[action] += 1
-                        last_event = action
-                        last_event_time = now
-
-                frame_delta = max(now - previous_frame_time, 1e-6)
-                instant_fps = 1.0 / frame_delta
-                fps = instant_fps if fps <= 0 else fps * 0.90 + instant_fps * 0.10
-                previous_frame_time = now
-                processed_frames += 1
-                pose_frames += int(results.pose_landmarks is not None)
-                hand_frames += int(
-                    results.left_hand_landmarks is not None
-                    or results.right_hand_landmarks is not None
-                )
-
-                if args.check_camera:
-                    if processed_frames >= max(1, args.check_frames):
-                        elapsed = max(now - started, 1e-6)
-                        print(
-                            "camera_check=ok frames={} avg_fps={:.1f} pose_frames={} hand_frames={}".format(
-                                processed_frames,
-                                processed_frames / elapsed,
-                                pose_frames,
-                                hand_frames,
-                            )
+            frame = engine.process(frame, mirror=True, annotate=not args.check_camera)
+            if args.check_camera:
+                if engine.processed_frames >= max(1, args.check_frames):
+                    elapsed = max(time.perf_counter() - engine.started, 1e-6)
+                    print(
+                        "camera_check=ok frames={} avg_fps={:.1f} pose_frames={} hand_frames={}".format(
+                            engine.processed_frames,
+                            engine.processed_frames / elapsed,
+                            engine.pose_frames,
+                            engine.hand_frames,
                         )
-                        return 0
-                    continue
+                    )
+                    return 0
+                continue
 
-                draw_skeleton(frame, results)
-                draw_overlay(
-                    frame,
-                    fps,
-                    counts,
-                    middle_active,
-                    middle_metrics,
-                    elbow_active,
-                    elbow_metrics,
-                    iron_active,
-                    iron_metrics,
-                    cooldowns,
-                    now,
-                    last_event,
-                    last_event_time,
-                )
-                cv2.imshow("KOF AI - Action Recognition", frame)
-
-                key = cv2.waitKey(1) & 0xFF
-                if key in (27, ord("q"), ord("Q")):
-                    break
-                if key in (ord("r"), ord("R")):
-                    for action in counts:
-                        counts[action] = 0
-                    cooldowns.reset()
-                    last_event = None
+            cv2.imshow("KOF AI - Action Recognition", frame)
+            key = cv2.waitKey(1) & 0xFF
+            if key in (27, ord("q"), ord("Q")):
+                break
+            if key in (ord("r"), ord("R")):
+                engine.reset_counts()
     except KeyboardInterrupt:
         pass
     finally:
         capture.release()
+        if engine is not None:
+            engine.close()
         cv2.destroyAllWindows()
     return 0
+
+
+def run() -> int:
+    args = parse_args()
+    if args.web:
+        return run_web(args)
+    return run_desktop(args)
 
 
 if __name__ == "__main__":

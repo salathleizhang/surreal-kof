@@ -1,6 +1,6 @@
-# MediaPipe 0.10.21 is intentionally pinned: it is the last broadly available
-# release that still exposes the legacy mp.solutions.holistic Python API used by
-# this single-file demo.
+# MediaPipe 0.10.21 is intentionally pinned: it is a known-good release that
+# exposes the legacy mp.solutions.holistic Python API used by this single-file
+# demo.
 mediapipe==0.10.21
 
 # MediaPipe depends on the contrib build. It contains the complete cv2 API from

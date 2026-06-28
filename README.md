@@ -101,10 +101,21 @@ python app.py
 ```
 
 Press `Q`/`Esc` to quit and `R` to reset counters. On macOS, allow the terminal
-or Python process to access the camera when prompted. For a headless smoke test:
+or Python process to access the camera when prompted. If access was previously
+denied, enable the app you launch Python from under **System Settings → Privacy
+& Security → Camera**. For a headless smoke test:
 
 ```bash
 python app.py --check-camera
+```
+
+If macOS does not expose the Python process in Camera settings, use browser
+mode instead. Chrome captures the camera and sends frames only to the local
+Python service:
+
+```bash
+python app.py --web
+# open http://127.0.0.1:8765/
 ```
 
 All thresholds and their tuning notes are grouped at the top of `app.py`. Motion

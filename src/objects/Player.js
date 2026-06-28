@@ -11,11 +11,11 @@ const { KeyCodes } = Phaser.Input.Keyboard;
 // animation states, so those keys are inert for him.
 const KEY_LAYOUTS = [
   {
-    up: KeyCodes.W, left: KeyCodes.A, right: KeyCodes.D, attack: KeyCodes.SPACE,
-    attack2: KeyCodes.F, special: KeyCodes.G,
+    up: KeyCodes.W, left: KeyCodes.A, right: KeyCodes.D, attack: KeyCodes.G,
+    attack2: KeyCodes.H, special: KeyCodes.J,
   },
   {
-    up: KeyCodes.UP, left: KeyCodes.LEFT, right: KeyCodes.RIGHT, attack: KeyCodes.ENTER,
+    up: KeyCodes.UP, left: KeyCodes.LEFT, right: KeyCodes.RIGHT, attack: KeyCodes.COMMA,
     attack2: KeyCodes.PERIOD, special: KeyCodes.SLASH,
   },
 ];

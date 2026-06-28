@@ -68,7 +68,11 @@ const VID_RES = '480p';
 // Hard technical constraints appended to every still prompt; the per-state pose
 // (above) is the only thing that varies. Magenta backdrop is what the matte keys.
 const STYLE_BASE = 'retro 16-bit pixel-art fighting game sprite in King of Fighters style, '
-  + 'single full-body character, side view facing right, full body fully inside frame with headroom and foot room, '
+  + 'single full-body character shown head to toe, standing upright on both feet, '
+  + 'entire body visible from the top of the head down to the shoes, both feet and both legs fully in frame, '
+  + 'normal natural human body proportions, full-length wide shot, side view facing right, '
+  + 'whole body fully inside the frame with clear headroom above and floor room below the feet, '
+  + 'NOT a portrait, NOT a bust, NOT a half-body crop, NOT a close-up — do not cut off the legs or feet, '
   + 'crisp clean pixels, no text, no UI, no health bar, sharp silhouette';
 const MAGENTA_BG = 'flat solid pure magenta #FF00FF background, evenly lit, no shadows on the floor, '
   + 'the background is one uniform magenta color with nothing else';
@@ -403,7 +407,7 @@ async function stageBase(job, charDir, workDir, log) {
   if (job.mock) {
     await writeFile(basePath, PNG.sync.write(synthFrame(384, 512, 0, 200)));
   } else {
-    const basePrompt = `${STYLE_BASE}. Neutral idle fighting stance. Keep the same person/character as the reference photo — their face, hairstyle, outfit and colours. ${MAGENTA_BG}.`;
+    const basePrompt = `${STYLE_BASE}. Neutral idle fighting stance. Keep the same person/character as the reference photo — their face, hairstyle, outfit and colours — but render the COMPLETE full body from head to toe even if the reference photo is only a face shot, a portrait or a half-body crop: invent and draw the rest of the body, legs and feet so the whole standing figure is shown. ${MAGENTA_BG}.`;
     await genImage({ from: job._photoPath, prompt: basePrompt, dest: basePath });
   }
   job._baseAbs = basePath;

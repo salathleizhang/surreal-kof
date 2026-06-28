@@ -1,0 +1,64 @@
+{
+  "nameEn": "Luo Yonghao",
+  "nameCn": "罗永浩",
+  "summary": "Chinese entrepreneur, teacher, livestream seller, and meme icon fighting with speeches, debts, phones, and stubborn charisma.",
+  "anims": {
+    "idle": {
+      "startPose": "Relaxed stance, one hand raised like beginning a lecture.",
+      "endPose": "Chin lifted, fists loose, shoulders proudly squared.",
+      "motion": "He rocks gently, preparing another devastating public statement.",
+      "flavor": "A tiny Smartisan phone glints like emotional armor."
+    },
+    "walk": {
+      "startPose": "Forward lean, palm open, mouth mid-sentence.",
+      "endPose": "Heavy step planted, finger pointing at unseen doubters.",
+      "motion": "He strides like entering a product launch and an argument.",
+      "flavor": "Each step sounds like unpaid debt becoming paid debt."
+    },
+    "attack1": {
+      "startPose": "Left hand guards, right finger cocked like a microphone.",
+      "endPose": "Finger jab extended straight into the opponent’s ego.",
+      "motion": "He snaps forward with a sharp lecturing poke.",
+      "flavor": "The jab quotes: tough lives need no explanation."
+    },
+    "attack2": {
+      "startPose": "Both hands grip an invisible refrigerator door.",
+      "endPose": "Arms swing down, body twisted after impact.",
+      "motion": "He yanks, pivots, and smashes downward with consumer-rights fury.",
+      "flavor": "A Siemens fridge complaint becomes a legal uppercut."
+    },
+    "intro": {
+      "startPose": "Standing still, glasses adjusted, phone held like a relic.",
+      "endPose": "Arms spread, smirking as if unveiling destiny.",
+      "motion": "He clears his throat, then performs a dramatic launch keynote.",
+      "flavor": "The crowd hears three seconds of pure Smartisan sentimentality."
+    },
+    "death": {
+      "startPose": "Staggering backward, one hand clutching his livestream script.",
+      "endPose": "Collapsed sitting, still raising one stubborn finger.",
+      "motion": "He falls slowly, refusing to stop explaining the situation.",
+      "flavor": "Even defeated, he schedules another debt-repayment episode."
+    },
+    "super": {
+      "startPose": "Feet planted wide, microphone raised, coat flaring.",
+      "endPose": "Pointing forward, surrounded by shattered phones and receipts.",
+      "motion": "He unleashes a rapid-fire speech barrage and livestream product storm.",
+      "flavor": "交个朋友 becomes a full-screen capitalism meteor shower."
+    }
+  },
+  "moves": {
+    "attack1": {
+      "archetype": "finger jab",
+      "damage": 10
+    },
+    "attack2": {
+      "archetype": "fridge smash",
+      "damage": 14
+    },
+    "super": {
+      "archetype": "barrage",
+      "damage": 30,
+      "multiHit": true
+    }
+  }
+}

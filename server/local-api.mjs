@@ -60,10 +60,10 @@ function addParam(args, key, value) {
   if (value === undefined || value === null || reservedKeys.has(key)) return;
   const flag = `--${toKebab(key)}`;
 
+  // mulerouter's array-typed params (e.g. nano-banana edit's `images`) expect a
+  // single JSON-array string, not a repeated flag.
   if (Array.isArray(value)) {
-    for (const item of value) {
-      args.push(flag, String(item));
-    }
+    args.push(flag, JSON.stringify(value.map(String)));
     return;
   }
 

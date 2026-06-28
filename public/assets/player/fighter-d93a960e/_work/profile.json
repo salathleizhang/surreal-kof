@@ -1,0 +1,64 @@
+{
+  "nameEn": "Luo Yonghao",
+  "nameCn": "罗永浩",
+  "summary": "Chinese entrepreneur, former teacher, Smartisan founder and livestream salesman fighting with charisma, debt receipts, and情怀-powered gadgets.",
+  "anims": {
+    "idle": {
+      "startPose": "Upright stance, one hand adjusting glasses, other guarding his chest.",
+      "endPose": "Chin raised, palm open like lecturing an invisible audience.",
+      "motion": "He rocks calmly, glasses glinting as fingers count business points.",
+      "flavor": "A tiny Smartisan logo sparkles whenever he says情怀 silently."
+    },
+    "walk": {
+      "startPose": "Forward lean, phone in hand, coat hem ready to swing.",
+      "endPose": "One foot planted, phone raised like a product demo.",
+      "motion": "He strides briskly, alternating salesman gestures with defensive shoulder dips.",
+      "flavor": "Each step feels like entering another livestream room called Make Friends."
+    },
+    "attack1": {
+      "startPose": "Elbow tucked, index finger aimed like a stern teacher.",
+      "endPose": "Arm fully jabbed, glasses lowered in judgment.",
+      "motion": "He snaps a sharp lecture-poke straight into the opponent's forehead.",
+      "flavor": "The poke lands with the invisible subtitle: '彪悍的人生不需要解释'."
+    },
+    "attack2": {
+      "startPose": "Both hands grip a boxed gadget beside his hip.",
+      "endPose": "Torso twisted, box slammed forward at chest height.",
+      "motion": "He pivots hard, swinging the product box like a premium brick.",
+      "flavor": "The box is labeled情怀, but somehow weighs like unpaid debt."
+    },
+    "intro": {
+      "startPose": "Back turned, holding microphone and a stack of receipts.",
+      "endPose": "Faces forward, receipts fanned like battle talismans.",
+      "motion": "He turns slowly, bows, then snaps into a salesman guard.",
+      "flavor": "He announces another episode of True Repayment Legend before fighting."
+    },
+    "death": {
+      "startPose": "Staggering backward, glasses crooked, receipts flying loose.",
+      "endPose": "Collapsed seated, one hand still presenting a coupon code.",
+      "motion": "He drops dramatically, tries to stand, then slumps with exhausted dignity.",
+      "flavor": "Even defeated, he whispers 'link in bio' to clear the inventory."
+    },
+    "super": {
+      "startPose": "Crouched low, microphone raised, receipts orbiting his shoulders.",
+      "endPose": "Standing tall, palm extended after unleashing a glowing sales storm.",
+      "motion": "He roars a pitch, launching phones, coupons, and debt receipts in rapid bursts.",
+      "flavor": "The final hit stamps '真还传' across the victim's credit score."
+    }
+  },
+  "moves": {
+    "attack1": {
+      "archetype": "lecture poke",
+      "damage": 10
+    },
+    "attack2": {
+      "archetype": "gadget box slam",
+      "damage": 14
+    },
+    "super": {
+      "archetype": "projectile barrage",
+      "damage": 30,
+      "multiHit": true
+    }
+  }
+}

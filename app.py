@@ -41,13 +41,13 @@ import numpy as np
 # Tunable constants
 # ---------------------------------------------------------------------------
 
-# Camera / inference. 640x480 and model complexity 0 are the safest settings
-# for keeping the CPU demo above 15 FPS. Increase complexity to 1 if landmarks
-# jitter too much and the machine still has performance headroom.
+# Camera / inference. 640x480 keeps CPU cost controlled. Complexity 1 is the
+# full pose model bundled inside the pinned MediaPipe wheel; complexity 0 would
+# be lighter, but MediaPipe downloads that model on first run.
 CAMERA_INDEX = 0
 FRAME_WIDTH = 640
 FRAME_HEIGHT = 480
-MODEL_COMPLEXITY = 0
+MODEL_COMPLEXITY = 1
 MIN_DETECTION_CONFIDENCE = 0.55
 MIN_TRACKING_CONFIDENCE = 0.55
 POSE_VISIBILITY_MIN = 0.55
@@ -339,11 +339,12 @@ class MiddleFingerDetector:
 
         thumb_tip_palm_ratio = distance(points[4], palm_center) / palm_size
         thumb_tip_index_ratio = distance(points[4], points[5]) / palm_size
-        thumb_ip_angle = joint_angle(points[2], points[3], points[4])
+        # A tucked thumb is often straight while lying across the folded
+        # fingers, so distance-to-palm is more reliable here than joint angle.
         thumb_curled = (
             thumb_tip_palm_ratio <= THUMB_TIP_PALM_RATIO_MAX
             or thumb_tip_index_ratio <= THUMB_TIP_INDEX_RATIO_MAX
-        ) and thumb_ip_angle < 175.0
+        )
 
         other_curled = [
             finger_state[name][1] for name in ("index", "ring", "pinky")

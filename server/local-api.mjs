@@ -4,7 +4,7 @@ import { mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
-  startCharacterJob, advanceJob, regenerateJob, getJob, listJobs,
+  startCharacterJob, advanceJob, backJob, regenerateJob, getJob, listJobs,
 } from './character-pipeline.mjs';
 
 const host = process.env.LOCAL_API_HOST || '127.0.0.1';
@@ -285,6 +285,15 @@ const server = http.createServer(async (req, res) => {
     const advanceMatch = url.pathname.match(/^\/api\/generate-character\/([\w-]+)\/advance$/);
     if (req.method === 'POST' && advanceMatch) {
       const job = advanceJob(advanceMatch[1]);
+      if (!job) { sendJson(res, 404, { error: 'Unknown job.' }); return; }
+      sendJson(res, 200, job);
+      return;
+    }
+
+    // Step back to the previous stage to review/redo it (no regeneration).
+    const backMatch = url.pathname.match(/^\/api\/generate-character\/([\w-]+)\/back$/);
+    if (req.method === 'POST' && backMatch) {
+      const job = backJob(backMatch[1]);
       if (!job) { sendJson(res, 404, { error: 'Unknown job.' }); return; }
       sendJson(res, 200, job);
       return;

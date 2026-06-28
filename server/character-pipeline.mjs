@@ -195,7 +195,7 @@ function pickEvenly(items, count) {
 // How many per-animation jobs (keyframe images, then videos) run at once. The
 // animations are independent, so each stage fans them out — bounded so we don't
 // hammer the MuleRun queue or saturate local ffmpeg/matte. Tune via env.
-const CONCURRENCY = Math.max(1, Number(process.env.GEN_CONCURRENCY) || 3);
+const CONCURRENCY = Math.max(1, Number(process.env.GEN_CONCURRENCY) || 7);
 
 // Run `worker` over `items` with at most `limit` in flight at a time.
 async function mapPool(items, limit, worker) {
@@ -318,6 +318,7 @@ function kfHue(hueBase, anim) {
 // (_-prefixed) fields carry state between stages but are hidden from clients.
 
 const NEXT_STAGE = { base: 'keyframes', keyframes: 'frames' };
+const PREV_STAGE = { keyframes: 'base', frames: 'keyframes' };
 
 export function startCharacterJob({ name, photoPath, mock = false }) {
   const id = randomUUID().slice(0, 8);
@@ -355,6 +356,23 @@ export function advanceJob(id) {
   if (job.status === 'running') return getJob(id); // still working — ignore
   const next = NEXT_STAGE[job.stage];
   if (next) kickoff(job, next);
+  return getJob(id);
+}
+
+// Step back to the previous stage to review/redo it. The earlier stage's assets
+// are still on the job (base / keyframes are kept), so this just moves the stage
+// pointer back and marks it awaiting again — no regeneration. Refused mid-run.
+export function backJob(id) {
+  const job = jobs.get(id);
+  if (!job) return null;
+  if (job.status === 'running') return getJob(id); // can't rewind mid-run
+  const prev = PREV_STAGE[job.stage];
+  if (!prev) return getJob(id); // already at the first generated stage
+  job.stage = prev;
+  job.status = 'awaiting';
+  job.error = null;
+  job.progress = 1;
+  job.step = prev === 'base' ? 'base 图（已生成），可重做或确认' : '首尾帧（已生成），可重做或确认';
   return getJob(id);
 }
 

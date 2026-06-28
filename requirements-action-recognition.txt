@@ -1,0 +1,9 @@
+# MediaPipe 0.10.21 is intentionally pinned: it is the last broadly available
+# release that still exposes the legacy mp.solutions.holistic Python API used by
+# this single-file demo.
+mediapipe==0.10.21
+
+# MediaPipe depends on the contrib build. It contains the complete cv2 API from
+# opencv-python, so do not install opencv-python alongside it (the wheels clash).
+opencv-contrib-python>=4.10,<5
+numpy>=1.24,<2

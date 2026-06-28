@@ -86,6 +86,30 @@ npm run build    # produce a production build in dist/
 npm run preview  # preview the production build
 ```
 
+## Camera action-recognition demo
+
+An optional local Python demo recognizes a single person's middle-finger pose,
+elbow strike and shoulder charge using MediaPipe Holistic landmarks plus
+rule-based geometry. It is currently standalone and does not control the Phaser
+fighter.
+
+```bash
+python3 -m venv .venv-action
+source .venv-action/bin/activate
+python -m pip install -r requirements-action-recognition.txt
+python app.py
+```
+
+Press `Q`/`Esc` to quit and `R` to reset counters. On macOS, allow the terminal
+or Python process to access the camera when prompted. For a headless smoke test:
+
+```bash
+python app.py --check-camera
+```
+
+All thresholds and their tuning notes are grouped at the top of `app.py`. Motion
+speeds shown on screen are normalized to shoulder-widths per second.
+
 ## Local-only MuleRun API
 
 Full API docs: [`docs/local-mulerun-api.md`](docs/local-mulerun-api.md)

@@ -137,6 +137,7 @@ export function openCreateCharacterModal({ onComplete, onClose, mock = false } =
   injectStyle();
 
   let photoDataUrl = null;
+  let charName = '';
   let jobId = null;
   let job = null;
   let closed = false;
@@ -208,7 +209,7 @@ export function openCreateCharacterModal({ onComplete, onClose, mock = false } =
         </div>
         <div class="kof-cc-fields">
           <div class="kof-cc-label">CODE NAME / 名字</div>
-          <input class="kof-cc-input" type="text" maxlength="40" placeholder="科比 / Kobe" />
+          <input class="kof-cc-input" type="text" maxlength="40" placeholder="科比 / Kobe" value="${charName.replace(/"/g, '&quot;')}" />
           <div class="kof-cc-hint">长相取自你的照片，<b>招式由视频模型随机生成（抽卡）</b>，不满意就重做再抽。<br>分四步：BASE 状态图 → 首尾帧 → 视频抽帧 → 入库，每步可预览。</div>
         </div>
       </div>
@@ -243,6 +244,7 @@ export function openCreateCharacterModal({ onComplete, onClose, mock = false } =
   async function startJob() {
     const name = q('.kof-cc-input').value.trim();
     if (!name) { setStatus('请输入角色名字。', '#ffcc66'); return; }
+    charName = name;
     if (!photoDataUrl && !mock) { setStatus('请先上传一张照片。', '#ffcc66'); return; }
     busy = true;
     setStatus('提交任务，正在生成 BASE 图…', '#bfe6ff', true);
@@ -272,6 +274,7 @@ export function openCreateCharacterModal({ onComplete, onClose, mock = false } =
       </div>
       <div class="kof-cc-status"></div>`;
     footEl.innerHTML = `
+      <button class="kof-cc-btn cancel" data-act="back">← 上一步</button>
       <button class="kof-cc-btn ghost" data-act="regen">↻ 重新生成</button>
       <div class="right"><button class="kof-cc-btn go" data-act="next">下一步：首尾帧 →</button></div>`;
   }
@@ -297,6 +300,7 @@ export function openCreateCharacterModal({ onComplete, onClose, mock = false } =
     }).join('');
     bodyEl.innerHTML = `<div class="kof-cc-grid">${cards}</div><div class="kof-cc-status"></div>`;
     footEl.innerHTML = `
+      <button class="kof-cc-btn cancel" data-act="back">← 上一步</button>
       <button class="kof-cc-btn ghost" data-act="regen">↻ 全部重做</button>
       <div class="right"><button class="kof-cc-btn go" data-act="next">下一步：生成视频 →</button></div>`;
   }
@@ -353,6 +357,23 @@ export function openCreateCharacterModal({ onComplete, onClose, mock = false } =
     } finally { busy = false; }
   }
 
+  // Step back to the previous review step. From the BASE step there is no earlier
+  // generated stage, so we return to the upload form (photo + name are kept).
+  async function back() {
+    if (busy) return;
+    if (!job || job.stage === 'base') { renderForm(); return; }
+    busy = true;
+    setStatus('返回上一步…', '#bfe6ff', true);
+    try {
+      const r = await fetch(`${LOCAL_API}/api/generate-character/${jobId}/back`, { method: 'POST' });
+      job = await r.json();
+      if (!r.ok) throw new Error(job.error || `HTTP ${r.status}`);
+      route();
+    } catch (e) {
+      setStatus(`返回失败：${e.message}`, '#ff8080');
+    } finally { busy = false; }
+  }
+
   async function advance() {
     if (busy) return;
     busy = true;
@@ -377,6 +398,7 @@ export function openCreateCharacterModal({ onComplete, onClose, mock = false } =
     if (act === 'start') startJob();
     else if (act === 'regen') regenerate(null);
     else if (act === 'next') advance();
+    else if (act === 'back') back();
     else if (act === 'pick') q('input[type=file]').click();
     else if (act === 'close') { if (!busy) close(); }
     else if (t === overlay && !busy) close();

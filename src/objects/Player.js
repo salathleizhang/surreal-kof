@@ -159,6 +159,7 @@ export default class Player {
         this.status = STATUS.SUPER;
         this.vx = 0;
         this.frame_current_cnt = 0;
+        if (this.scene.showMoveName) this.scene.showMoveName(this, this.moveName('super'));
         playAttackVoice(this.scene);
       } else if (input.attack2 && this.animations.has(STATUS.ATTACK2)) {
         this.status = STATUS.ATTACK2;
@@ -273,6 +274,10 @@ export default class Player {
     return obj.frame_rate * (obj.frame_cnt - 1);
   }
 
+  moveName(key) {
+    return this.moveData && this.moveData[key] && this.moveData[key].name;
+  }
+
   // Project a strike box in front of the fighter; hit the opponent if it lands.
   tryStrike({ reach, topOff, heightPx, damage }) {
     const you = this.scene.players[1 - this.id];
@@ -341,19 +346,35 @@ export default class Player {
 
       this.sprite.setVisible(true);
       this.sprite.setTexture(key);
-      this.sprite.y = this.y + obj.offset_y;
 
-      // offset_x (default 0) centres an oversized sprite over the hitbox; it is
-      // mirrored along with the art when the fighter faces left.
-      const ox = obj.offset_x || 0;
-      if (this.direction > 0) {
-        this.sprite.setScale(obj.scale, obj.scale);
-        this.sprite.x = this.x + ox;
+      if (obj.fullscreen) {
+        // 大招: a cinematic full-screen move. Cover the whole stage (no hitbox
+        // anchoring, no mirroring) and draw above everything else, then restore
+        // normal depth once it ends. The art is landscape and opaque, so it
+        // fills the screen for the move's duration.
+        const sw = this.scene.scale.width;
+        const sh = this.scene.scale.height;
+        const cover = Math.max(sw / (obj.srcW || sw), sh / (obj.srcH || sh));
+        this.sprite.setScale(cover, cover);
+        this.sprite.x = (sw - (obj.srcW || sw) * cover) / 2;
+        this.sprite.y = (sh - (obj.srcH || sh) * cover) / 2;
+        this.sprite.setDepth(50);
       } else {
-        // Mirror around the right edge of the hitbox (origin stays top-left, so
-        // a negative x-scale draws the art leftward from the hitbox's right side).
-        this.sprite.setScale(-obj.scale, obj.scale);
-        this.sprite.x = this.x + this.width - ox;
+        this.sprite.setDepth(10); // restore normal depth after a full-screen move
+        this.sprite.y = this.y + obj.offset_y;
+
+        // offset_x (default 0) centres an oversized sprite over the hitbox; it is
+        // mirrored along with the art when the fighter faces left.
+        const ox = obj.offset_x || 0;
+        if (this.direction > 0) {
+          this.sprite.setScale(obj.scale, obj.scale);
+          this.sprite.x = this.x + ox;
+        } else {
+          // Mirror around the right edge of the hitbox (origin stays top-left, so
+          // a negative x-scale draws the art leftward from the hitbox's right side).
+          this.sprite.setScale(-obj.scale, obj.scale);
+          this.sprite.x = this.x + this.width - ox;
+        }
       }
 
       // Motion afterimages: drop a fading ghost while attacking or moving so

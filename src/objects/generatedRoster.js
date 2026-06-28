@@ -67,12 +67,27 @@ export async function loadGeneratedCharacter(scene, manifest, base = '') {
     }
     animMeta[state] = {
       frame_cnt: info.frames,
-      frame_rate: FRAME_RATE[info.playback] || 5,
+      // The super carries its own play rate so it lasts ~4s; others use the
+      // per-playback default.
+      frame_rate: info.frameRate || FRAME_RATE[info.playback] || 5,
       playback: info.playback,
+      // The super is a cinematic full-screen move (landscape, not chroma-keyed),
+      // drawn covering the stage rather than anchored to the hitbox.
+      fullscreen: !!info.fullscreen,
     };
   }
 
   await loadImages(scene, entries);
+
+  // Record each state's source frame size. Most anims share the idle (3:4) size,
+  // but the super is landscape (16:9), so the fighter needs per-state dimensions
+  // to scale it correctly (especially the full-screen super).
+  for (const state of Object.keys(animMeta)) {
+    const tex = scene.textures.exists(`${id}-${state}-0`)
+      ? scene.textures.get(`${id}-${state}-0`).getSourceImage()
+      : null;
+    if (tex) { animMeta[state].srcW = tex.width; animMeta[state].srcH = tex.height; }
+  }
 
   // Reuse art for engine states the pipeline doesn't generate:
   //   2 backward <- walk, 3 jump <- idle, 5 hit <- first death frame.

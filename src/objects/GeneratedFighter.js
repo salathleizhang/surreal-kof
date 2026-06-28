@@ -34,6 +34,20 @@ export default class GeneratedFighter extends Player {
 
     for (const [stateStr, meta] of Object.entries(entry.animMeta)) {
       const state = Number(stateStr);
+      // The super (大招) is a cinematic full-screen move: it is NOT scaled to the
+      // hitbox or mirrored — Player.render() stretches it to cover the stage. We
+      // just pass its own source size through for that cover-fit.
+      if (meta.fullscreen) {
+        this.animations.set(state, {
+          frame_cnt: meta.frame_cnt,
+          frame_rate: meta.frame_rate,
+          playback: meta.playback,
+          fullscreen: true,
+          srcW: meta.srcW,
+          srcH: meta.srcH,
+        });
+        continue;
+      }
       this.animations.set(state, {
         frame_cnt: meta.frame_cnt,
         frame_rate: meta.frame_rate,

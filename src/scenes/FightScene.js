@@ -3,7 +3,7 @@ import { STATUS } from '../objects/Player.js';
 import {
   getCharacter, DEFAULT_CHARACTER, SCENES, DEFAULT_SCENE,
 } from '../objects/roster.js';
-import { PIXEL_FONT } from '../fonts.js';
+import { PIXEL_FONT, PIXEL_FONT_CN } from '../fonts.js';
 import { playUi, stopMenuBgm } from '../audio.js';
 
 const ROUND_TIME_MS = 60000;
@@ -170,6 +170,43 @@ export default class FightScene extends Phaser.Scene {
         onComplete: () => puff.destroy(),
       });
     }
+  }
+
+  showMoveName(player, name) {
+    if (!name) return;
+    const { width } = this.scale;
+    const y = player && player.id === 0 ? 118 : 166;
+    const label = this.add
+      .text(width / 2, y, name, {
+        fontFamily: PIXEL_FONT_CN,
+        fontSize: '34px',
+        fontStyle: 'bold',
+        color: '#fff7b0',
+        stroke: '#5a0000',
+        strokeThickness: 8,
+        align: 'center',
+      })
+      .setOrigin(0.5)
+      .setDepth(31)
+      .setScale(0.7)
+      .setAlpha(0);
+
+    this.tweens.add({
+      targets: label,
+      scale: 1,
+      alpha: 1,
+      duration: 160,
+      ease: 'Back.easeOut',
+    });
+    this.tweens.add({
+      targets: label,
+      y: y - 18,
+      alpha: 0,
+      duration: 450,
+      delay: 900,
+      ease: 'Quad.easeIn',
+      onComplete: () => label.destroy(),
+    });
   }
 
   createHud() {

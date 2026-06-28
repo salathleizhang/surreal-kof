@@ -283,7 +283,7 @@ export function openCreateCharacterModal({ onComplete, onClose, mock = false } =
   function renderKeyframesReview() {
     setSteps(2);
     const cards = Object.entries(job.keyframes || {}).map(([key, kf]) => {
-      const label = ANIM_LABELS[key] || key;
+      const label = kf.label && kf.label !== key ? `${ANIM_LABELS[key] || key} · ${kf.label}` : (ANIM_LABELS[key] || key);
       let body;
       if (!kf.generated) {
         body = '<div class="kof-cc-reuse">复用 BASE 图<br>（首尾帧都是站立，无需生成）</div>';

@@ -3,6 +3,7 @@
 
 Run:
     python app.py
+    python app.py --web  # browser-camera mode on http://127.0.0.1:8765/
 
 Controls:
     Q / Esc  quit

@@ -17,7 +17,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { PNG } from 'pngjs';
-import { runStudio, runChat } from './mule.mjs';
+import { runStudio } from './mule.mjs';
 import { matteFile } from './matte.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -29,27 +29,35 @@ const PLAYER_DIR = join(PUBLIC_DIR, 'assets', 'player');
 // super). `frames` is how many sprites we keep — longer actions keep more.
 // `playback`: loop | forward | yoyo (out-and-back retract) | hold (freeze last).
 // `matte: false` keeps the background (the super keeps its full-screen effect).
+//
+// `startKf` / `endKf` describe the keyframe plan, so we never waste a generation
+// on a frame we already have:
+//   'base' — reuse the base sprite as this frame (the pose is just idle)
+//   'gen'  — generate this frame from the base + the pose prompt
+//   'same' — reuse this anim's start frame (start == end, e.g. a seamless loop)
+// So idle needs 0 new frames (base↔base), attack/intro/death need 1 (base→end),
+// and walk/super need 1 (one pose used as both ends).
 export const ANIMS = [
   {
-    key: 'idle', engineState: 0, duration: 4, frames: 8, playback: 'loop', matte: true,
+    key: 'idle', engineState: 0, duration: 4, frames: 8, playback: 'loop', matte: true, startKf: 'base', endKf: 'base',
   },
   {
-    key: 'walk', engineState: 1, duration: 4, frames: 8, playback: 'loop', matte: true,
+    key: 'walk', engineState: 1, duration: 4, frames: 8, playback: 'loop', matte: true, startKf: 'gen', endKf: 'same',
   },
   {
-    key: 'attack1', engineState: 4, duration: 4, frames: 7, playback: 'yoyo', matte: true,
+    key: 'attack1', engineState: 4, duration: 4, frames: 7, playback: 'yoyo', matte: true, startKf: 'base', endKf: 'gen',
   },
   {
-    key: 'attack2', engineState: 'attack2', duration: 4, frames: 7, playback: 'yoyo', matte: true,
+    key: 'attack2', engineState: 'attack2', duration: 4, frames: 7, playback: 'yoyo', matte: true, startKf: 'base', endKf: 'gen',
   },
   {
-    key: 'intro', engineState: 'intro', duration: 4, frames: 8, playback: 'forward', matte: true,
+    key: 'intro', engineState: 'intro', duration: 4, frames: 8, playback: 'forward', matte: true, startKf: 'base', endKf: 'gen',
   },
   {
-    key: 'death', engineState: 6, duration: 5, frames: 10, playback: 'hold', matte: true,
+    key: 'death', engineState: 6, duration: 5, frames: 10, playback: 'hold', matte: true, startKf: 'base', endKf: 'gen',
   },
   {
-    key: 'super', engineState: 'super', duration: 6, frames: 14, playback: 'forward', matte: false,
+    key: 'super', engineState: 'super', duration: 6, frames: 14, playback: 'forward', matte: false, startKf: 'gen', endKf: 'same',
   },
 ];
 
@@ -57,87 +65,32 @@ const ASPECT = '3:4'; // tall full-body framing for both stills and video
 const IMG_RES = '1K';
 const VID_RES = '480p';
 
-// Hard technical constraints appended to every still prompt so the LLM only has
-// to supply the creative pose/flavour. Magenta backdrop is what the matte keys.
+// Hard technical constraints appended to every still prompt; the per-state pose
+// (above) is the only thing that varies. Magenta backdrop is what the matte keys.
 const STYLE_BASE = 'retro 16-bit pixel-art fighting game sprite in King of Fighters style, '
   + 'single full-body character, side view facing right, full body fully inside frame with headroom and foot room, '
   + 'crisp clean pixels, no text, no UI, no health bar, sharp silhouette';
 const MAGENTA_BG = 'flat solid pure magenta #FF00FF background, evenly lit, no shadows on the floor, '
   + 'the background is one uniform magenta color with nothing else';
 
-function fallbackProfile(name) {
-  // Used when the LLM step is skipped/fails: generic but still playable.
-  const poses = {
-    idle: { startPose: 'relaxed fighting idle stance, fists up, slight breathing', endPose: 'relaxed fighting idle stance, fists up, weight shifted', motion: 'subtle idle breathing bob, fighting stance', flavor: '' },
-    walk: { startPose: 'mid stride walking forward, left foot forward', endPose: 'mid stride walking forward, right foot forward', motion: 'walking forward in a loop, marching gait', flavor: '' },
-    attack1: { startPose: 'idle fighting stance, fists up', endPose: 'fully extended straight punch forward, arm out', motion: 'throws a fast straight punch forward then retracts', flavor: '' },
-    attack2: { startPose: 'idle fighting stance, fists up', endPose: 'high roundhouse kick fully extended', motion: 'spins into a roundhouse kick then recovers', flavor: '' },
-    intro: { startPose: 'standing neutral, arms at sides', endPose: 'confident entrance victory pose, taunting the camera', motion: 'steps in and strikes a confident entrance pose', flavor: '' },
-    death: { startPose: 'staggering backward, off balance', endPose: 'knocked out lying on the ground, defeated', motion: 'gets knocked back and collapses to the ground defeated', flavor: '' },
-    super: { startPose: 'charging up a massive special move, energy gathering, dramatic glow', endPose: 'unleashing an explosive screen-filling special attack, huge energy blast', motion: 'unleashes an explosive screen-filling super special move with energy effects', flavor: 'over-the-top finishing move' },
+// Fixed, character-agnostic prompts. We deliberately do NOT design specific
+// moves: each prompt only names the STATE (idle / walk / attack / super / …) and
+// lets the video model's inherent randomness "roll" the actual motion — every
+// generation is a fresh gacha. The character's look comes entirely from the
+// uploaded photo (carried through the base sprite), not from words.
+function fixedProfile(name) {
+  const anims = {
+    idle: { startPose: 'relaxed ready fighting idle stance', endPose: 'relaxed ready fighting idle stance', motion: 'subtle idle breathing, standing ready in a fighting stance' },
+    walk: { startPose: 'walking forward in a fighting game', endPose: 'walking forward in a fighting game', motion: 'walking forward in a steady seamless loop' },
+    attack1: { startPose: 'ready fighting idle stance', endPose: 'an offensive attacking pose, striking toward the opponent', motion: 'performs a quick melee attack toward the opponent, then returns to stance' },
+    attack2: { startPose: 'ready fighting idle stance', endPose: 'a strong powerful attacking pose, heavy strike toward the opponent', motion: 'performs a strong heavy melee attack toward the opponent, then recovers' },
+    intro: { startPose: 'standing neutral', endPose: 'a confident dynamic entrance pose, taunting', motion: 'steps in and strikes a confident entrance pose' },
+    death: { startPose: 'staggering, knocked off balance', endPose: 'knocked down, defeated, lying on the ground', motion: 'gets knocked back and collapses to the ground defeated' },
+    super: { startPose: 'charging up a powerful special move, energy gathering', endPose: 'unleashing an explosive powerful special move with dramatic energy effects', motion: 'unleashes an explosive powerful special move with big dramatic energy effects' },
   };
-  const anims = {};
-  for (const a of ANIMS) anims[a.key] = poses[a.key];
   return {
     nameEn: name, nameCn: name, summary: '', anims, moves: {},
   };
-}
-
-// Ask the language model to research the character (by name) and design the
-// seven animations with memey, in-character, slightly absurd flavour.
-async function researchProfile(name, log) {
-  const schema = ANIMS.map((a) => `"${a.key}": {"startPose": "...", "endPose": "...", "motion": "...", "flavor": "..."}`).join(',\n    ');
-  const prompt = `You are designing a King of Fighters style pixel fighter based on a real/known character named "${name}".
-First, recall who "${name}" is (a celebrity, athlete, meme, fictional character, etc.) and their signature traits, catchphrases, iconic moves and memes.
-Then design SEVEN animations. For each, write SHORT vivid English descriptions:
-- "startPose": the body pose for the FIRST keyframe
-- "endPose": the body pose for the LAST keyframe
-- "motion": how the body moves from start to end (for a video model)
-- "flavor": one witty, meme-aware, in-character, slightly absurd detail tying the move to this specific person (this is the fun part — make attack/super reference their real iconic moves/memes; e.g. a basketball player elbows / throws a basketball, an idol does a dance move).
-Keep each field under 18 words. Do NOT mention background or art style (that is added later).
-
-Reply with ONLY this JSON, no markdown, no commentary:
-{
-  "nameEn": "...",
-  "nameCn": "...",
-  "summary": "one sentence on who they are and their fighting gimmick",
-  "anims": {
-    ${schema}
-  },
-  "moves": {
-    "attack1": {"archetype": "punch|kick|elbow|...", "damage": 10},
-    "attack2": {"archetype": "...", "damage": 14},
-    "super": {"archetype": "projectile|barrage|aoe|...", "damage": 30, "multiHit": true}
-  }
-}`;
-
-  const res = await runChat({ prompt, effort: 'medium' });
-  if (!res.ok || !res.content) {
-    log(`LLM research failed (${res.error || res.stderr || 'no output'}); using fallback profile.`);
-    return fallbackProfile(name);
-  }
-  const parsed = extractJson(res.content);
-  if (!parsed || !parsed.anims) {
-    log('LLM returned unparseable JSON; using fallback profile.');
-    return fallbackProfile(name);
-  }
-  // Backfill any missing anim so the rest of the pipeline never crashes.
-  const fb = fallbackProfile(name);
-  parsed.anims = { ...fb.anims, ...parsed.anims };
-  for (const a of ANIMS) parsed.anims[a.key] = { ...fb.anims[a.key], ...parsed.anims[a.key] };
-  parsed.nameEn = parsed.nameEn || name;
-  parsed.nameCn = parsed.nameCn || name;
-  return parsed;
-}
-
-function extractJson(text) {
-  // Tolerate code fences / stray prose around the JSON object.
-  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  const body = fenced ? fenced[1] : text;
-  const start = body.indexOf('{');
-  const end = body.lastIndexOf('}');
-  if (start < 0 || end <= start) return null;
-  try { return JSON.parse(body.slice(start, end + 1)); } catch { return null; }
 }
 
 // Pull the output asset URLs out of a studio result, wherever they live.
@@ -194,6 +147,9 @@ async function genVideo({
     resolution: VID_RES,
     aspectRatio: ASPECT,
     generateAudio: false,
+    // A fresh random seed each call so every (re)generation rolls a different
+    // motion — the moves come from this "gacha", not from a scripted prompt.
+    seed: Math.floor(Math.random() * 4294967295),
     maxWait: 900,
   };
   if (lastFrame) body.lastFrameImage = lastFrame;
@@ -230,6 +186,26 @@ function pickEvenly(items, count) {
     out.push(items[Math.round((i * (items.length - 1)) / (count - 1))]);
   }
   return out;
+}
+
+// How many per-animation jobs (keyframe images, then videos) run at once. The
+// animations are independent, so each stage fans them out — bounded so we don't
+// hammer the MuleRun queue or saturate local ffmpeg/matte. Tune via env.
+const CONCURRENCY = Math.max(1, Number(process.env.GEN_CONCURRENCY) || 3);
+
+// Run `worker` over `items` with at most `limit` in flight at a time.
+async function mapPool(items, limit, worker) {
+  const results = new Array(items.length);
+  let next = 0;
+  const run = async () => {
+    while (next < items.length) {
+      const idx = next;
+      next += 1;
+      results[idx] = await worker(items[idx], idx);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, run));
+  return results;
 }
 
 // ---- mock mode: synthesise frames locally so the whole plumbing (job ->
@@ -300,24 +276,45 @@ async function synthAnimFrames(anim, outDir, workDir, hue) {
 // ---- job store ----
 const jobs = new Map();
 
-export function getJob(id) {
-  const j = jobs.get(id);
+// Strip internal (underscore-prefixed) fields before handing a job to clients.
+function publicJob(j) {
   if (!j) return null;
-  const { _frames, ...pub } = j;
+  const pub = {};
+  for (const [k, v] of Object.entries(j)) if (!k.startsWith('_')) pub[k] = v;
   return pub;
 }
 
-export function listJobs() {
-  return [...jobs.values()].map(({ _frames, ...pub }) => pub);
-}
+export function getJob(id) { return publicJob(jobs.get(id)); }
+export function listJobs() { return [...jobs.values()].map(publicJob); }
 
 function slugify(name) {
   const base = String(name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   return (base || 'fighter').slice(0, 24);
 }
 
-// Start a generation job and return its id immediately. Progress is reported via
-// getJob(id): { status, step, progress(0..1), log[], manifest, error }.
+// Vite-served path for a char asset, with a cache-busting version so the modal
+// always shows the freshly (re)generated image instead of a stale cached one.
+function assetUrl(charId, rel, v) {
+  return `assets/player/${charId}/${rel}?v=${v}`;
+}
+
+// Mock body hue per anim, kept in a green→blue band away from the magenta key.
+function kfHue(hueBase, anim) {
+  return 90 + ((hueBase - 90 + ANIMS.indexOf(anim) * 20 + 120) % 120);
+}
+
+// --- Review-gated wizard: three stages the client drives one at a time ---
+//
+//   base       research + base sprite                -> awaiting (review)
+//   keyframes  the start/end frames we actually need -> awaiting (review)
+//   frames     videos + extract + matte + manifest   -> done
+//
+// Each stage runs async; the client polls getJob until status === 'awaiting',
+// shows the result, then calls advance (approve) or regenerate (redo). Internal
+// (_-prefixed) fields carry state between stages but are hidden from clients.
+
+const NEXT_STAGE = { base: 'keyframes', keyframes: 'frames' };
+
 export function startCharacterJob({ name, photoPath, mock = false }) {
   const id = randomUUID().slice(0, 8);
   const charId = `${slugify(name)}-${id}`;
@@ -326,61 +323,195 @@ export function startCharacterJob({ name, photoPath, mock = false }) {
     charId,
     name,
     mock,
+    stage: 'base',
     status: 'running',
     step: 'queued',
     progress: 0,
     log: [],
+    profile: null,
+    base: null,
+    keyframes: null,
     manifest: null,
     error: null,
     startedAt: Date.now(),
+    _photoPath: photoPath,
+    _profile: null,
+    _baseAbs: null,
+    _kf: {},
   };
   jobs.set(id, job);
-  runJob(job, { photoPath }).catch((err) => {
+  kickoff(job, 'base');
+  return getJob(id);
+}
+
+// Approve the current stage and run the next one.
+export function advanceJob(id) {
+  const job = jobs.get(id);
+  if (!job) return null;
+  if (job.status === 'running') return getJob(id); // still working — ignore
+  const next = NEXT_STAGE[job.stage];
+  if (next) kickoff(job, next);
+  return getJob(id);
+}
+
+// Redo the current stage. `target` optionally narrows a keyframes redo to one
+// animation so disliking a single frame doesn't re-roll the whole set.
+export function regenerateJob(id, target) {
+  const job = jobs.get(id);
+  if (!job) return null;
+  if (job.status === 'running') return getJob(id);
+  kickoff(job, job.stage, { target });
+  return getJob(id);
+}
+
+function kickoff(job, stage, opts = {}) {
+  job.stage = stage;
+  job.status = 'running';
+  job.error = null;
+  job.progress = 0;
+  job.step = '排队中…';
+  runStage(job, stage, opts).catch((err) => {
     job.status = 'failed';
     job.error = err.message;
     job.log.push(`FATAL: ${err.message}`);
   });
-  return getJob(id);
 }
 
-async function runJob(job, { photoPath }) {
+async function runStage(job, stage, opts) {
   const log = (m) => { job.log.push(m); job.step = m; };
   const charDir = join(PLAYER_DIR, job.charId);
   const workDir = join(charDir, '_work');
   await mkdir(workDir, { recursive: true });
+  if (stage === 'base') await stageBase(job, charDir, workDir, log);
+  else if (stage === 'keyframes') await stageKeyframes(job, charDir, log, opts);
+  else if (stage === 'frames') await stageFrames(job, charDir, workDir, log);
+}
 
-  // Total weighted steps for the progress bar: research + base + 7 anims.
-  const totalUnits = 1 + 1 + ANIMS.length;
-  let unit = 0;
-  const advance = () => { unit += 1; job.progress = unit / totalUnits; };
+// Stage 1 — generate the base sprite from the uploaded photo. No LLM: the prompt
+// is fixed and the character's look comes entirely from the reference photo.
+async function stageBase(job, charDir, workDir, log) {
+  if (!job._profile) {
+    const profile = fixedProfile(job.name);
+    await writeFile(join(workDir, 'profile.json'), JSON.stringify(profile, null, 2));
+    job._profile = profile;
+    job.profile = { nameEn: profile.nameEn, nameCn: profile.nameCn, summary: '' };
+  }
 
-  // 1) research / prompt design
-  log('研究角色与设计动画提示词…');
-  const profile = job.mock ? fallbackProfile(job.name) : await researchProfile(job.name, log);
-  await writeFile(join(workDir, 'profile.json'), JSON.stringify(profile, null, 2));
-  job.profile = { nameEn: profile.nameEn, nameCn: profile.nameCn, summary: profile.summary };
-  advance();
-
-  // 2) base sprite (consistency anchor for every keyframe)
   log('生成全身像素 base 图…');
+  job.progress = 0.4;
   const basePath = join(charDir, 'base.png');
   if (job.mock) {
-    await writeFile(basePath, PNG.sync.write(synthFrame(384, 512, 0.0, 200)));
+    await writeFile(basePath, PNG.sync.write(synthFrame(384, 512, 0, 200)));
   } else {
-    const basePrompt = `${STYLE_BASE}. Neutral idle fighting stance. The character is ${profile.nameEn}: ${profile.summary || ''}. ${MAGENTA_BG}.`;
-    await genImage({ from: photoPath, prompt: basePrompt, dest: basePath });
+    const basePrompt = `${STYLE_BASE}. Neutral idle fighting stance. Keep the same person/character as the reference photo — their face, hairstyle, outfit and colours. ${MAGENTA_BG}.`;
+    await genImage({ from: job._photoPath, prompt: basePrompt, dest: basePath });
   }
-  advance();
+  job._baseAbs = basePath;
+  // The base stays on magenta (needed as the img2img anchor), but for review we
+  // show a matted preview so the user judges the character, not the backdrop.
+  const basePrev = join(charDir, 'base.preview.png');
+  await matteFile(basePath, basePrev);
+  job.base = assetUrl(job.charId, 'base.preview.png', Date.now());
+  job.progress = 1;
+  job.status = 'awaiting';
+  job.step = 'base 图已生成，确认后继续';
+}
 
-  // Keep mock body colours in a green→blue band, well away from the magenta key
-  // so the chroma matte never eats the silhouette.
-  const hueBase = 90 + Math.floor(Math.random() * 60);
+// Stage 2 — generate only the keyframes we don't already have (idle reuses the
+// base for both ends; loops reuse one pose for both; attacks reuse the base as
+// their first frame). `opts.target` redoes a single animation.
+async function stageKeyframes(job, charDir, log, opts = {}) {
+  const profile = job._profile || fixedProfile(job.name);
+  const kfDir = join(charDir, 'kf');
+  await mkdir(kfDir, { recursive: true });
+  const baseAbs = job._baseAbs || join(charDir, 'base.png');
+  job.keyframes = job.keyframes || {};
+  job._kf = job._kf || {};
+  job._hue = job._hue || (90 + Math.floor(Math.random() * 60));
+  const v = Date.now();
+
+  let done = 0;
+  const total = ANIMS.length;
+  const bump = () => { done += 1; job.progress = done / total; job.step = `首尾帧 ${done}/${total}…`; };
+
+  // The animations are independent — fan them out (bounded concurrency).
+  await mapPool(ANIMS, CONCURRENCY, async (anim) => {
+    // Single-anim redo: keep the others exactly as they were.
+    if (opts.target && opts.target !== anim.key && job._kf[anim.key]) { bump(); return; }
+
+    const a = profile.anims[anim.key];
+    const generates = anim.startKf === 'gen' || anim.endKf === 'gen';
+    log(generates ? `生成「${anim.key}」首尾帧…` : `「${anim.key}」复用 base（无需生成）`);
+
+    const bgRule = anim.matte
+      ? MAGENTA_BG
+      : 'dramatic dynamic energy-filled background with motion lines and effects';
+    const mkPrompt = (pose) => `${STYLE_BASE}. ${pose}. Same exact character as the reference. ${bgRule}.`;
+
+    // Each frame has a magenta original (the seedance input, *Abs) and a matted
+    // preview (*PrevRel) shown to the user — except the super, which is keyed
+    // false and reviewed on its own dramatic background.
+    const makePreview = async (srcAbs, prevAbs) => {
+      if (anim.matte) await matteFile(srcAbs, prevAbs);
+      else await copyFile(srcAbs, prevAbs);
+    };
+
+    // First frame.
+    let firstAbs; let firstPrevRel;
+    if (anim.startKf === 'base') {
+      firstAbs = baseAbs; firstPrevRel = 'base.preview.png';
+    } else {
+      firstAbs = join(kfDir, `${anim.key}-start.png`);
+      if (job.mock) await writeFile(firstAbs, PNG.sync.write(synthFrame(384, 512, 0, kfHue(job._hue, anim))));
+      else await genImage({ from: baseAbs, prompt: mkPrompt(a.startPose), dest: firstAbs });
+      await makePreview(firstAbs, join(kfDir, `${anim.key}-start.preview.png`));
+      firstPrevRel = `kf/${anim.key}-start.preview.png`;
+    }
+
+    // Last frame.
+    let lastAbs; let lastPrevRel;
+    if (anim.endKf === 'base') {
+      lastAbs = baseAbs; lastPrevRel = 'base.preview.png';
+    } else if (anim.endKf === 'same') {
+      lastAbs = firstAbs; lastPrevRel = firstPrevRel;
+    } else {
+      lastAbs = join(kfDir, `${anim.key}-end.png`);
+      if (job.mock) await writeFile(lastAbs, PNG.sync.write(synthFrame(384, 512, 1, kfHue(job._hue, anim))));
+      else await genImage({ from: baseAbs, prompt: mkPrompt(a.endPose), dest: lastAbs });
+      await makePreview(lastAbs, join(kfDir, `${anim.key}-end.preview.png`));
+      lastPrevRel = `kf/${anim.key}-end.preview.png`;
+    }
+
+    job._kf[anim.key] = { firstAbs, lastAbs };
+    job.keyframes[anim.key] = {
+      label: anim.key,
+      first: assetUrl(job.charId, firstPrevRel, v),
+      last: assetUrl(job.charId, lastPrevRel, v),
+      single: lastPrevRel === firstPrevRel, // start == end (no separate last frame)
+      generated: generates, // false when the whole anim just reuses the base
+    };
+    bump();
+  });
+
+  job.status = 'awaiting';
+  job.step = '首尾帧已生成，确认后生成视频';
+}
+
+// Stage 3 — for each anim: keyframes -> seedance video -> extract -> matte, then
+// write the manifest and register the character. Terminal (status: done).
+async function stageFrames(job, charDir, workDir, log) {
+  const profile = job._profile || fixedProfile(job.name);
+  const baseAbs = job._baseAbs || join(charDir, 'base.png');
   const manifestAnims = {};
 
-  // 3) per-animation: keyframes -> video -> frames -> matte
-  for (const anim of ANIMS) {
+  let done = 0;
+  const total = ANIMS.length;
+  const bump = () => { done += 1; job.progress = done / total; job.step = `视频与抽帧 ${done}/${total}…`; };
+
+  // Each anim's video -> extract -> matte is independent; fan out the (slow)
+  // seedance calls with bounded concurrency.
+  await mapPool(ANIMS, CONCURRENCY, async (anim) => {
     const a = profile.anims[anim.key];
-    log(`生成「${anim.key}」首尾帧…`);
     const animWork = join(workDir, anim.key);
     await mkdir(animWork, { recursive: true });
     const outDir = join(charDir, anim.key);
@@ -389,24 +520,22 @@ async function runJob(job, { photoPath }) {
 
     let framePaths;
     if (job.mock) {
-      framePaths = await synthAnimFrames(anim, outDir, join(animWork, 'raw'), 90 + ((hueBase - 90 + ANIMS.indexOf(anim) * 20) % 120));
+      framePaths = await synthAnimFrames(anim, outDir, join(animWork, 'raw'), kfHue(job._hue || 120, anim));
     } else {
-      const bgRule = anim.matte ? MAGENTA_BG : 'dramatic dynamic energy-filled background with motion lines and effects';
-      const mkPrompt = (pose) => `${STYLE_BASE}. ${pose}. Same exact character as the reference. ${a.flavor || ''}. ${bgRule}.`;
-      const startPath = await genImage({ from: basePath, prompt: mkPrompt(a.startPose), dest: join(animWork, 'start.png') });
-      const endPath = await genImage({ from: basePath, prompt: mkPrompt(a.endPose), dest: join(animWork, 'end.png') });
-
+      const kf = job._kf[anim.key] || { firstAbs: baseAbs, lastAbs: baseAbs };
       log(`生成「${anim.key}」动画视频…`);
       const videoPath = join(animWork, 'video.mp4');
       await genVideo({
-        image: startPath, lastFrame: endPath, prompt: a.motion, duration: anim.duration, dest: videoPath,
+        image: kf.firstAbs,
+        lastFrame: kf.lastAbs, // equals first frame for loops -> seamless loop
+        prompt: a.motion,
+        duration: anim.duration,
+        dest: videoPath,
       });
 
       log(`抽帧并处理「${anim.key}」…`);
-      const rawDir = join(animWork, 'raw');
-      const rawFrames = await extractFrames(videoPath, rawDir);
+      const rawFrames = await extractFrames(videoPath, join(animWork, 'raw'));
       const chosen = pickEvenly(rawFrames, anim.frames);
-
       framePaths = [];
       for (let i = 0; i < chosen.length; i += 1) {
         const dest = join(outDir, `${String(i + 1).padStart(4, '0')}.png`);
@@ -423,30 +552,27 @@ async function runJob(job, { photoPath }) {
       playback: anim.playback,
       matte: anim.matte,
     };
-    advance();
-  }
+    bump();
+  });
 
-  // 4) manifest
   log('写入 manifest…');
-  const portraitFrame = `assets/player/${job.charId}/idle/0001.png`;
   const manifest = {
     id: job.charId,
     name: (profile.nameEn || job.name).toUpperCase(),
     cn: profile.nameCn || job.name,
     summary: profile.summary || '',
     base: `assets/player/${job.charId}/base.png`,
-    portrait: portraitFrame,
+    portrait: `assets/player/${job.charId}/idle/0001.png`,
     anims: manifestAnims,
     moves: profile.moves || {},
     createdAt: Date.now(),
   };
   await writeFile(join(charDir, 'manifest.json'), JSON.stringify(manifest, null, 2));
-
-  // Keep an index of all generated characters so the game can list them.
   await appendToIndex(manifest);
 
   job.manifest = manifest;
   job.manifestUrl = `assets/player/${job.charId}/manifest.json`;
+  job.stage = 'done';
   job.status = 'done';
   job.progress = 1;
   job.step = '完成';

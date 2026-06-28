@@ -3,7 +3,9 @@ import { spawn } from 'node:child_process';
 import { mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { startCharacterJob, getJob, listJobs } from './character-pipeline.mjs';
+import {
+  startCharacterJob, advanceJob, regenerateJob, getJob, listJobs,
+} from './character-pipeline.mjs';
 
 const host = process.env.LOCAL_API_HOST || '127.0.0.1';
 const port = Number(process.env.LOCAL_API_PORT || 8787);
@@ -276,6 +278,25 @@ const server = http.createServer(async (req, res) => {
       }
       const job = startCharacterJob({ name: body.name, photoPath, mock: !!body.mock });
       sendJson(res, 202, job);
+      return;
+    }
+
+    // Approve the current stage and run the next one.
+    const advanceMatch = url.pathname.match(/^\/api\/generate-character\/([\w-]+)\/advance$/);
+    if (req.method === 'POST' && advanceMatch) {
+      const job = advanceJob(advanceMatch[1]);
+      if (!job) { sendJson(res, 404, { error: 'Unknown job.' }); return; }
+      sendJson(res, 200, job);
+      return;
+    }
+
+    // Redo the current stage (optionally a single keyframe via { target }).
+    const regenMatch = url.pathname.match(/^\/api\/generate-character\/([\w-]+)\/regenerate$/);
+    if (req.method === 'POST' && regenMatch) {
+      const body = await readJson(req);
+      const job = regenerateJob(regenMatch[1], body.target);
+      if (!job) { sendJson(res, 404, { error: 'Unknown job.' }); return; }
+      sendJson(res, 200, job);
       return;
     }
 

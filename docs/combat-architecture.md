@@ -151,3 +151,17 @@ http://127.0.0.1:5173/?dev=fight&p1=kyo&p2=kyo
 ```
 
 This shortcut is disabled in production builds.
+
+## Collision debug mode
+
+The fight screen always exposes a small `开发模式` toggle in its bottom-right
+corner. Click it or press `F2` to show the current combat geometry:
+
+- yellow: fighter pushboxes;
+- green: fighter hurtboxes;
+- red: active skill hitboxes;
+- cyan: projectile collision boxes.
+
+The setting stays enabled for later fights in the same game session. Add
+`&debug=hitboxes` to the development fight URL to open with the overlay already
+enabled.

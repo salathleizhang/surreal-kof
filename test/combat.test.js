@@ -52,6 +52,12 @@ test('collision world resolves a skill-owned hitbox against target hurtboxes', (
   assert.equal(hits.length, 1);
   assert.equal(hits[0].damage, 17);
   assert.equal(hits[0].attacker, owner);
+  assert.equal(world.activeHitboxes.length, 1);
+  assert.deepEqual(world.activeHitboxes[0].box, {
+    x: 180, y: 120, width: 50, height: 30,
+  });
+  world.beginFrame();
+  assert.equal(world.activeHitboxes.length, 0);
 });
 
 test('skill runner fires multiple same-frame events exactly once', () => {

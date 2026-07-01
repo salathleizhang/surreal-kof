@@ -99,6 +99,9 @@ npm run preview  # preview the production build
 
 Combat extension guide: [`docs/combat-architecture.md`](docs/combat-architecture.md)
 
+During a fight, click `开发模式` in the bottom-right corner or press `F2` to
+display pushboxes, hurtboxes, active skill hitboxes and projectile bounds.
+
 ## Local-only MuleRun API
 
 Full API docs: [`docs/local-mulerun-api.md`](docs/local-mulerun-api.md)

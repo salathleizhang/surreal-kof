@@ -10,6 +10,11 @@ export default class CollisionWorld {
     this.effects = effects;
     this.fighters = [];
     this.projectiles = [];
+    this.activeHitboxes = [];
+  }
+
+  beginFrame() {
+    this.activeHitboxes = [];
   }
 
   registerFighter(fighter) {
@@ -22,6 +27,7 @@ export default class CollisionWorld {
 
   activateHitbox(owner, event, hitTargets = new Set()) {
     const attackBox = localBoxToWorld(owner, event.box || {});
+    this.activeHitboxes.push({ owner, event, box: attackBox });
     let hits = 0;
     for (const target of this.opponentsOf(owner)) {
       if (target.isDead() || hitTargets.has(target)) continue;
@@ -118,6 +124,7 @@ export default class CollisionWorld {
 
   destroy() {
     this.clearProjectiles();
+    this.activeHitboxes = [];
     this.fighters = [];
   }
 }

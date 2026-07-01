@@ -7,6 +7,7 @@ import { playUi, stopMenuBgm } from '../audio.js';
 import { SCENE_KEYS } from '../config/game.js';
 import CollisionWorld from '../combat/CollisionWorld.js';
 import EffectSystem from '../combat/effects/EffectSystem.js';
+import CombatDebugOverlay from '../combat/debug/CombatDebugOverlay.js';
 
 const ROUND_TIME_MS = 60000;
 // Pre-fight ceremony: hold the action while the "Round 1, Fight!" announcer
@@ -63,6 +64,7 @@ export default class FightScene extends Phaser.Scene {
     this.koWait = 0; // ms waited (post-KO) for the HP trails to finish draining
     this.createDustTexture();
     this.createHud();
+    this.combatDebug = new CombatDebugOverlay(this, this.combatWorld);
 
     // Hand off from the menu music to the fight: cut the BGM, then run the
     // opening ceremony (announcer + "Round 1"/"Fight!" titles) before the
@@ -71,6 +73,7 @@ export default class FightScene extends Phaser.Scene {
     this.startIntro();
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.combatDebug.destroy();
       this.combatWorld.destroy();
       this.combatEffects.destroy();
     });
@@ -287,6 +290,7 @@ export default class FightScene extends Phaser.Scene {
     // round clock stay frozen until the announcer finishes.
     if (this.introActive) {
       for (const player of this.players) player.update(timedelta);
+      this.combatDebug.update();
       return;
     }
 
@@ -297,6 +301,7 @@ export default class FightScene extends Phaser.Scene {
       for (const player of this.players) player.update(timedelta);
       this.updateHud();
       this.updateKoReveal(timedelta);
+      this.combatDebug.update();
       return;
     }
 
@@ -304,13 +309,16 @@ export default class FightScene extends Phaser.Scene {
     // the hit reads as impact. Tween-driven FX/HP bars keep animating.
     if (this.hitstop > 0) {
       this.hitstop -= 1;
+      this.combatDebug.update();
       return;
     }
 
+    this.combatWorld.beginFrame();
     this.updateTimer(timedelta);
     for (const player of this.players) player.update(timedelta);
     this.combatWorld.resolvePushboxes();
     this.combatWorld.update(timedelta);
+    this.combatDebug.update();
     this.updateHud();
     this.checkKo();
   }

@@ -1,12 +1,13 @@
-import Player from './Player.js';
+import Fighter from '../combat/Fighter.js';
 import { CHARACTER_SCALE } from '../config/combat.js';
+import { KYO_COMBAT } from '../characters/kyo/combat.js';
 
 // Kyo Kusanagi — the one playable character. Each of the seven FSM states has
 // its frames pre-registered as textures (`kyo-<state>-<frame>`) by the
 // PreloadScene; here we just describe how each state should be rendered.
-export default class Kyo extends Player {
+export default class Kyo extends Fighter {
   constructor(scene, info) {
-    super(scene, { ...info, texturePrefix: 'kyo' });
+    super(scene, { ...info, texturePrefix: 'kyo', combat: KYO_COMBAT });
     this.init_animations();
   }
 

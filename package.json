@@ -8,6 +8,7 @@
     "dev:music": "bash scripts/dev-chrome.sh",
     "local-api": "node server/local-api.mjs",
     "build": "vite build",
+    "test": "node --test",
     "preview": "vite preview"
   },
   "dependencies": {

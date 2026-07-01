@@ -1,23 +1,27 @@
-import Player from './Player.js';
+import Fighter from '../combat/Fighter.js';
 import { STATUS } from '../config/combat.js';
 import { getGeneratedCharacter } from '../state/generatedCharacters.js';
+import { createGeneratedCombatDefinition } from '../characters/generated/createCombatDefinition.js';
 
 // A data-driven fighter built from an AI-generated manifest. All of its art and
 // per-state animation metadata come from the generated-character registry (populated by
 // services/generatedCharacters.loadGeneratedCharacter); this class wires that metadata
 // into the Player FSM and computes how the full-body sprite sits on the hitbox.
-export default class GeneratedFighter extends Player {
+export default class GeneratedFighter extends Fighter {
   constructor(scene, info) {
     const id = info.charKey;
-    super(scene, { ...info, texturePrefix: id });
-    this.entry = getGeneratedCharacter(id);
+    const entry = getGeneratedCharacter(id);
+    const combat = createGeneratedCombatDefinition(entry || {});
+    super(scene, {
+      ...info, texturePrefix: id, combat,
+    });
+    this.entry = entry;
     this.moveData = this.entry ? this.entry.moves : {};
     this.init_animations();
 
     // Play the entrance pose once on spawn; it self-terminates back to idle.
     if (this.animations.has(STATUS.INTRO)) {
-      this.status = STATUS.INTRO;
-      this.frame_current_cnt = 0;
+      this.playState(STATUS.INTRO);
     }
   }
 

@@ -95,6 +95,9 @@ npm run preview  # preview the production build
 - `src/services/` handles asset and generated-character loading.
 - `src/scenes/` contains Phaser screens; non-boot scenes load in parallel during preload.
 - `src/objects/` contains fighters and controllers, while optional `src/ui/` modules load on demand.
+- `src/combat/` contains the data-driven skill runner, collision world, projectiles and effects.
+
+Combat extension guide: [`docs/combat-architecture.md`](docs/combat-architecture.md)
 
 ## Local-only MuleRun API
 

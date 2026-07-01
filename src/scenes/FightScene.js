@@ -5,6 +5,8 @@ import { getStage } from '../data/stages.js';
 import { PIXEL_FONT, PIXEL_FONT_CN } from '../fonts.js';
 import { playUi, stopMenuBgm } from '../audio.js';
 import { SCENE_KEYS } from '../config/game.js';
+import CollisionWorld from '../combat/CollisionWorld.js';
+import EffectSystem from '../combat/effects/EffectSystem.js';
 
 const ROUND_TIME_MS = 60000;
 // Pre-fight ceremony: hold the action while the "Round 1, Fight!" announcer
@@ -31,6 +33,8 @@ export default class FightScene extends Phaser.Scene {
     const scene = getStage(data && data.scene);
     this.game.canvas.setAttribute('aria-label', `战斗场景：${scene.cn}`);
     this.createBackground(width, height, scene);
+    this.combatEffects = new EffectSystem(this);
+    this.combatWorld = new CollisionWorld(this, this.combatEffects);
 
     // Characters chosen on the select screen (default to Kyo if launched
     // directly, e.g. during development).
@@ -65,6 +69,11 @@ export default class FightScene extends Phaser.Scene {
     // round goes live.
     stopMenuBgm();
     this.startIntro();
+
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.combatWorld.destroy();
+      this.combatEffects.destroy();
+    });
   }
 
   createBackground(width, height, scene) {
@@ -251,16 +260,16 @@ export default class FightScene extends Phaser.Scene {
       g.fillRect(bar.x, BAR_Y, bar.width, BAR_HEIGHT);
       g.strokeRect(bar.x, BAR_Y, bar.width, BAR_HEIGHT);
 
-      this.drawHpLayer(bar, player.hpRed, 0xff0000);
-      this.drawHpLayer(bar, player.hpGreen, 0x90ee90);
+      this.drawHpLayer(bar, player.hpRed, player.maxHp, 0xff0000);
+      this.drawHpLayer(bar, player.hpGreen, player.maxHp, 0x90ee90);
     });
 
     this.timerText.setText(`${Math.floor(this.timeLeft / 1000)}`);
   }
 
-  drawHpLayer(bar, hp, color) {
+  drawHpLayer(bar, hp, maxHp, color) {
     const inner = bar.width - BORDER * 2;
-    const w = (inner * Math.max(hp, 0)) / 100;
+    const w = (inner * Math.max(hp, 0)) / maxHp;
     const y = BAR_Y + BORDER;
     const h = BAR_HEIGHT - BORDER * 2;
     const x = bar.anchorRight ? bar.x + bar.width - BORDER - w : bar.x + BORDER;
@@ -300,6 +309,8 @@ export default class FightScene extends Phaser.Scene {
 
     this.updateTimer(timedelta);
     for (const player of this.players) player.update(timedelta);
+    this.combatWorld.resolvePushboxes();
+    this.combatWorld.update(timedelta);
     this.updateHud();
     this.checkKo();
   }
@@ -308,18 +319,16 @@ export default class FightScene extends Phaser.Scene {
   // back (see updateKoReveal) until the HP bars have visibly drained.
   checkKo() {
     if (this.gameOver) return;
-    if (!this.players.some((p) => p.status === STATUS.DEATH)) return;
+    if (!this.players.some((player) => player.isDead())) return;
 
     this.gameOver = true;
     this.koWait = 0;
+    this.combatWorld.clearProjectiles();
     for (const player of this.players) {
       player.vx = 0; // stop the winner mid-stride
       // The winner strikes its entrance/victory pose, if it has one (generated
       // fighters do); the loser is already in its death animation.
-      if (player.status !== STATUS.DEATH && player.animations.has(STATUS.INTRO)) {
-        player.status = STATUS.INTRO;
-        player.frame_current_cnt = 0;
-      }
+      if (!player.isDead()) player.playState(STATUS.INTRO);
     }
   }
 
@@ -349,8 +358,8 @@ export default class FightScene extends Phaser.Scene {
     // result call right after: "Winner!" normally, or "Game Over" when the human
     // player loses (1P down in single-player) or it's a draw / double-KO.
     playUi(this, 'ko');
-    const p1Dead = this.players[0].status === STATUS.DEATH;
-    const p2Dead = this.players[1].status === STATUS.DEATH;
+    const p1Dead = this.players[0].isDead();
+    const p2Dead = this.players[1].isDead();
     const lose = (p1Dead && p2Dead) || (this.mode === 'single' && p1Dead);
     this.time.delayedCall(1000, () => playUi(this, lose ? 'gameover' : 'winner'));
 
@@ -415,10 +424,9 @@ export default class FightScene extends Phaser.Scene {
 
       // Time up with no KO: double knockout.
       const [a, b] = this.players;
-      if (a.status !== STATUS.DEATH && b.status !== STATUS.DEATH) {
-        a.status = b.status = STATUS.DEATH;
-        a.frame_current_cnt = b.frame_current_cnt = 0;
-        a.vx = b.vx = 0;
+      if (!a.isDead() && !b.isDead()) {
+        a.defeat();
+        b.defeat();
       }
     }
   }

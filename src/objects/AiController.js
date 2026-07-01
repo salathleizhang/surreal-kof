@@ -1,5 +1,3 @@
-import { STATUS, CHARACTER_SCALE } from '../config/combat.js';
-
 // Difficulty profile. Tuned to feel like a real fighting-game opponent: it keeps
 // spacing, walks in, strikes when you're in range, baits, and hops back out of
 // the way of your attacks — but with a human-like reaction delay so it is beatable.
@@ -20,7 +18,9 @@ export default class AiController {
     this.scene = player.scene;
     this.cfg = profile;
 
-    this.input = { up: false, left: false, right: false, attack: false };
+    this.input = {
+      up: false, left: false, right: false, attack: false, attack2: false, special: false,
+    };
     this.sinceDecision = profile.reactionMs; // decide on the very first frame
     this.sinceAttack = profile.attackCooldownMs;
   }
@@ -48,10 +48,12 @@ export default class AiController {
   geometry() {
     const me = this.player;
     const opp = this.opponent();
-    const oppOnRight = opp.x >= me.x;
+    const myBox = me.getPushbox();
+    const oppBox = opp.getPushbox();
+    const oppOnRight = oppBox.x >= myBox.x;
     const gap = oppOnRight
-      ? opp.x - (me.x + me.width)
-      : me.x - (opp.x + opp.width);
+      ? oppBox.x - (myBox.x + myBox.width)
+      : myBox.x - (oppBox.x + oppBox.width);
     return { opp, oppOnRight, gap };
   }
 
@@ -72,21 +74,23 @@ export default class AiController {
     // Fresh inputs each decision; movement is re-asserted below as needed.
     this.input.up = false;
     this.input.attack = false;
+    this.input.attack2 = false;
+    this.input.special = false;
     this.clearMove();
 
     // Nothing useful to do while stunned, dead, or against a downed opponent.
-    if (me.status === STATUS.HIT || me.status === STATUS.DEATH) return;
+    if (!me.canStartSkill()) return;
     const { opp, oppOnRight, gap } = this.geometry();
-    if (opp.status === STATUS.DEATH) return;
+    if (opp.isDead()) return;
 
-    // How far the fist reaches past the hitbox (mirrors Player.update_attack());
-    // commit a touch inside max reach.
-    const attackRange = 100 * CHARACTER_SCALE * 0.9;
+    // Ask the equipped primary skill for its preferred range, so a character's
+    // AI spacing follows its own combat definition instead of a global fist box.
+    const attackRange = Math.max(1, me.getSkillRange('attack') * 0.9);
     const r = Math.random;
 
     // Read the opponent's swing: if they're attacking and we're inside their
     // range, hop/step back out of the way most of the time.
-    if (opp.status === STATUS.ATTACK && gap < attackRange + 40 && r() < this.cfg.defense) {
+    if (opp.skillRunner.isActive && gap < attackRange + 40 && r() < this.cfg.defense) {
       this.setMove(false, oppOnRight);
       if (r() < 0.4) this.input.up = true; // jump back
       return;

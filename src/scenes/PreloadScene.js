@@ -68,7 +68,18 @@ export default class PreloadScene extends Phaser.Scene {
       this.registry.set('kyoFrameCounts', kyoFrameCounts);
 
       registerDeferredScenes(this.scene, deferredScenes);
-      this.scene.start(SCENE_KEYS.TITLE);
+      // Development-only direct fight launch keeps combat iteration and browser
+      // smoke tests fast without adding a production route or hidden menu.
+      const params = new URLSearchParams(globalThis.location?.search || '');
+      if (import.meta.env.DEV && params.get('dev') === 'fight') {
+        this.scene.start(SCENE_KEYS.FIGHT, {
+          mode: params.get('mode') || 'versus',
+          selections: [params.get('p1') || 'kyo', params.get('p2') || 'kyo'],
+          scene: params.get('stage') || undefined,
+        });
+      } else {
+        this.scene.start(SCENE_KEYS.TITLE);
+      }
     } catch (err) {
       console.error(err);
       this.loadingText.setText('Failed to load assets.\nSee console for details.');

@@ -76,8 +76,10 @@ export async function loadGeneratedCharacter(scene, manifest, base = '') {
   const entries = [];
   const animMeta = {};
   for (const [animKey, info] of Object.entries(manifest.anims)) {
-    const state = KEY_TO_STATE[animKey];
-    if (state === undefined) continue;
+    // Known locomotion/legacy actions retain their numeric texture states.
+    // Additional future skills may use a custom engineState or their animation
+    // key directly, allowing manifests to add moves without editing this table.
+    const state = KEY_TO_STATE[animKey] ?? info.engineState ?? animKey;
     for (let i = 0; i < info.frames; i += 1) {
       entries.push({ key: `${id}-${state}-${i}`, url: `${base}${info.dir}/${pad4(i + 1)}.png` });
     }
@@ -134,6 +136,7 @@ export async function loadGeneratedCharacter(scene, manifest, base = '') {
     srcH: idleSrc.height,
     animMeta,
     moves: manifest.moves || {},
+    combat: manifest.combat || {},
   };
   return registerGeneratedCharacter(entry);
 }

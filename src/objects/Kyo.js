@@ -1,4 +1,5 @@
-import Player, { CHARACTER_SCALE } from './Player.js';
+import Player from './Player.js';
+import { CHARACTER_SCALE } from '../config/combat.js';
 
 // Kyo Kusanagi — the one playable character. Each of the seven FSM states has
 // its frames pre-registered as textures (`kyo-<state>-<frame>`) by the

@@ -1,10 +1,11 @@
 import Phaser from 'phaser';
 import { getCharacter, SELECT_GRID } from '../objects/roster.js';
-import { GENERATED, loadGeneratedCharacter } from '../objects/generatedRoster.js';
-import { openCreateCharacterModal } from '../ui/CreateCharacterModal.js';
+import { loadGeneratedCharacter } from '../services/generatedCharacters.js';
+import { listGeneratedCharacters } from '../state/generatedCharacters.js';
 import { PIXEL_FONT, PIXEL_FONT_CN } from '../fonts.js';
 import { setVerticalGradient } from '../utils/text.js';
 import { playUi, startMenuBgm } from '../audio.js';
+import { SCENE_KEYS } from '../config/game.js';
 
 // The grid cell that opens the "create custom fighter" modal instead of being a
 // selectable character.
@@ -37,7 +38,7 @@ const GAP = 12;
 
 export default class SelectScene extends Phaser.Scene {
   constructor() {
-    super('select');
+    super(SCENE_KEYS.CHARACTER_SELECT);
   }
 
   create(data) {
@@ -184,7 +185,7 @@ export default class SelectScene extends Phaser.Scene {
     this.cellChars[this.addIndex] = ADD_KEY;
     this.nextSlot = 1; // first free slot for a generated fighter
     // Seed any fighters already loaded this session (e.g. from the preloader).
-    for (const id of Object.keys(GENERATED)) this.assignSlot(id);
+    for (const entry of listGeneratedCharacters()) this.assignSlot(entry.id);
   }
 
   // Claim the next free cell for a generated fighter id; returns its index or -1
@@ -264,21 +265,27 @@ export default class SelectScene extends Phaser.Scene {
 
   // Open the DOM modal that drives the generation pipeline. Disabled while one is
   // already open so a player can't stack modals.
-  openCreateModal() {
+  async openCreateModal() {
     if (this.modalOpen) return;
     this.modalOpen = true;
     playUi(this, 'select');
-    openCreateCharacterModal({
-      onComplete: async (manifest) => {
-        try {
-          const entry = await loadGeneratedCharacter(this, manifest);
-          this.addGeneratedCharacter(entry);
-        } catch (e) {
-          console.error('Failed to load generated character', e);
-        }
-      },
-      onClose: () => { this.modalOpen = false; },
-    });
+    try {
+      const { openCreateCharacterModal } = await import('../ui/CreateCharacterModal.js');
+      openCreateCharacterModal({
+        onComplete: async (manifest) => {
+          try {
+            const entry = await loadGeneratedCharacter(this, manifest);
+            this.addGeneratedCharacter(entry);
+          } catch (e) {
+            console.error('Failed to load generated character', e);
+          }
+        },
+        onClose: () => { this.modalOpen = false; },
+      });
+    } catch (error) {
+      this.modalOpen = false;
+      console.error('Failed to open character creator', error);
+    }
   }
 
   // Big full-body standing art on the far left (1P) and far right (2P), plus the
@@ -564,6 +571,6 @@ export default class SelectScene extends Phaser.Scene {
       return key === ADD_KEY ? 'kyo' : key; // the CPU may land on the "+" cell
     });
 
-    this.scene.start('scene-select', { selections, mode: this.mode });
+    this.scene.start(SCENE_KEYS.STAGE_SELECT, { selections, mode: this.mode });
   }
 }

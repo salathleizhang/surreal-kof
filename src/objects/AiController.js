@@ -1,4 +1,4 @@
-import { STATUS, CHARACTER_SCALE } from './Player.js';
+import { STATUS, CHARACTER_SCALE } from '../config/combat.js';
 
 // Difficulty profile. Tuned to feel like a real fighting-game opponent: it keeps
 // spacing, walks in, strikes when you're in range, baits, and hops back out of

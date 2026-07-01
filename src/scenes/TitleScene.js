@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { PIXEL_FONT } from '../fonts.js';
 import { setVerticalGradient } from '../utils/text.js';
 import { playUi, startMenuBgm } from '../audio.js';
+import { SCENE_KEYS } from '../config/game.js';
 
 const { JustDown, KeyCodes } = Phaser.Input.Keyboard;
 const BACKGROUND_FRAME_MS = 100;
@@ -15,7 +16,7 @@ const MENU = [
 
 export default class TitleScene extends Phaser.Scene {
   constructor() {
-    super('title');
+    super(SCENE_KEYS.TITLE);
   }
 
   create() {
@@ -140,7 +141,7 @@ export default class TitleScene extends Phaser.Scene {
     // audio context. Just a crisp cursor blip on confirm — the "Round 1, Ready
     // Go!" announcer is saved for the fight scene, not the menus.
     playUi(this, 'cursor');
-    this.scene.start('select', { mode: MENU[this.selected].mode });
+    this.scene.start(SCENE_KEYS.CHARACTER_SELECT, { mode: MENU[this.selected].mode });
   }
 
   update() {

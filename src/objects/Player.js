@@ -3,6 +3,7 @@ import AiController from './AiController.js';
 import {
   playHit, playAttackVoice, playHurtVoice, playDeathVoice, playSwing,
 } from '../audio.js';
+import { STATUS, CHARACTER_SCALE } from '../config/combat.js';
 
 const { KeyCodes } = Phaser.Input.Keyboard;
 
@@ -20,33 +21,11 @@ const KEY_LAYOUTS = [
   },
 ];
 
-// Finite-state machine states:
-// 0: idle, 1: forward, 2: backward, 3: jump, 4: attack, 5: be hit, 6: death
-// 7-9 are extra states only generated (AI) fighters use; Kyo never enters them,
-// so his behaviour is unaffected.
-export const STATUS = {
-  IDLE: 0,
-  MOVE: 1,
-  BACKWARD: 2,
-  JUMP: 3,
-  ATTACK: 4,
-  HIT: 5,
-  DEATH: 6,
-  ATTACK2: 7, // second attack (kick/elbow/etc.)
-  SUPER: 8, // 大招 / desperation move
-  INTRO: 9, // entrance / victory pose
-};
-
 // One-shot action states: they play their animation once and then drop back to
 // idle (death is handled separately — it freezes on its last frame).
 const ONE_SHOT_STATES = new Set([
   STATUS.ATTACK, STATUS.HIT, STATUS.ATTACK2, STATUS.SUPER, STATUS.INTRO,
 ]);
-
-// Overall character size multiplier. The original art/hitboxes were tuned at
-// 1.0 (sprite scale 2, 120x200 hitbox); bump this to make both fighters bigger
-// while keeping art, hitboxes, punch reach and the floor line in proportion.
-export const CHARACTER_SCALE = 1.6;
 
 // Y coordinate of the floor the fighters stand on (bottom of the hitbox).
 const FLOOR_Y = 650;
@@ -258,8 +237,10 @@ export default class Player {
     } else if (this.status === STATUS.ATTACK2 && this.frame_current_cnt === this.actionApex()) {
       this.tryStrike({ reach: 130 * S, topOff: 20 * S, heightPx: 70 * S, damage: 24 });
     } else if (this.status === STATUS.SUPER && this.frame_current_cnt === this.actionApex()) {
-      const dmg = (this.moveData && this.moveData.super && this.moveData.super.damage) || 40;
-      this.tryStrike({ reach: 220 * S, topOff: 0, heightPx: 150 * S, damage: dmg });
+      // 大招 is a cinematic, screen-filling one-hit kill: it lands on the
+      // opponent regardless of distance (no hitbox check), dropping full HP.
+      const you = this.scene.players[1 - this.id];
+      if (you && you.status !== STATUS.DEATH) you.is_attack(Infinity);
     }
   }
 
@@ -349,16 +330,18 @@ export default class Player {
 
       if (obj.fullscreen) {
         // 大招: a cinematic full-screen move. Cover the whole stage (no hitbox
-        // anchoring, no mirroring) and draw above everything else, then restore
-        // normal depth once it ends. The art is landscape and opaque, so it
-        // fills the screen for the move's duration.
+        // anchoring, no mirroring) and draw it on the bottom layer — above the
+        // background (depth 0) but below the live fighters (depth 10) and the UI
+        // (depth 20) — so both characters and the HUD stay visible on top. Normal
+        // depth is restored once the move ends. The art is landscape and opaque,
+        // so it fills the screen for the move's duration.
         const sw = this.scene.scale.width;
         const sh = this.scene.scale.height;
         const cover = Math.max(sw / (obj.srcW || sw), sh / (obj.srcH || sh));
         this.sprite.setScale(cover, cover);
         this.sprite.x = (sw - (obj.srcW || sw) * cover) / 2;
         this.sprite.y = (sh - (obj.srcH || sh) * cover) / 2;
-        this.sprite.setDepth(50);
+        this.sprite.setDepth(5);
       } else {
         this.sprite.setDepth(10); // restore normal depth after a full-screen move
         this.sprite.y = this.y + obj.offset_y;

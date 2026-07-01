@@ -1,10 +1,12 @@
 import Phaser from 'phaser';
+import { getCharacter, DEFAULT_CHARACTER } from '../objects/roster.js';
 import {
-  getCharacter, DEFAULT_CHARACTER, SCENES, SCENE_ORDER, DEFAULT_SCENE,
-} from '../objects/roster.js';
+  STAGES, STAGE_ORDER, DEFAULT_STAGE,
+} from '../data/stages.js';
 import { PIXEL_FONT, PIXEL_FONT_CN } from '../fonts.js';
 import { setVerticalGradient } from '../utils/text.js';
 import { playUi, startMenuBgm } from '../audio.js';
+import { SCENE_KEYS } from '../config/game.js';
 
 const { JustDown } = Phaser.Input.Keyboard;
 const { KeyCodes } = Phaser.Input.Keyboard;
@@ -29,7 +31,7 @@ const FLIP_MS = 140; // half a flip (collapse, then expand the next page)
 
 export default class SceneSelectScene extends Phaser.Scene {
   constructor() {
-    super('scene-select');
+    super(SCENE_KEYS.STAGE_SELECT);
   }
 
   create(data) {
@@ -144,7 +146,7 @@ export default class SceneSelectScene extends Phaser.Scene {
     const frame = this.add
       .rectangle(0, 0, CARD_W, CARD_H, 0x300a0a, 0.92)
       .setStrokeStyle(3, 0xffffff);
-    this.cardThumb = this.add.image(0, 0, SCENES[DEFAULT_SCENE].texture).setOrigin(0.5);
+    this.cardThumb = this.add.image(0, 0, STAGES[DEFAULT_STAGE].texture).setOrigin(0.5);
     this.cardName = this.add
       .text(0, CARD_H / 2 + 14, '', {
         fontFamily: CN_FONT,
@@ -234,15 +236,15 @@ export default class SceneSelectScene extends Phaser.Scene {
   // Paint the current stage onto the live card: fit its thumbnail inside the
   // frame, set its name, and update the page indicator.
   applyCard() {
-    const scene = SCENES[SCENE_ORDER[this.sceneIndex]];
+    const scene = STAGES[STAGE_ORDER[this.sceneIndex]];
     this.cardThumb.setTexture(scene.texture);
     const src = this.textures.get(scene.texture).getSourceImage();
     const s = Math.min((CARD_W - 24) / src.width, (CARD_H - 24) / src.height);
     this.cardThumb.setScale(s);
     this.cardName.setText(scene.cn);
-    this.pageText.setText(`${this.sceneIndex + 1} / ${SCENE_ORDER.length}`);
+    this.pageText.setText(`${this.sceneIndex + 1} / ${STAGE_ORDER.length}`);
     this.game.canvas.setAttribute(
-      'aria-label', `场景选择：${scene.cn}（${this.sceneIndex + 1}/${SCENE_ORDER.length}）`,
+      'aria-label', `场景选择：${scene.cn}（${this.sceneIndex + 1}/${STAGE_ORDER.length}）`,
     );
   }
 
@@ -251,7 +253,7 @@ export default class SceneSelectScene extends Phaser.Scene {
   flipTo(delta) {
     if (this.flipping) return;
     this.flipping = true;
-    const n = SCENE_ORDER.length;
+    const n = STAGE_ORDER.length;
 
     this.tweens.add({
       targets: this.card,
@@ -288,7 +290,7 @@ export default class SceneSelectScene extends Phaser.Scene {
 
     if (cancel) {
       playUi(this, 'cancel');
-      this.scene.start('select', { mode: this.mode });
+      this.scene.start(SCENE_KEYS.CHARACTER_SELECT, { mode: this.mode });
     } else if (confirm) {
       this.startFight();
     } else if (up) {
@@ -300,7 +302,7 @@ export default class SceneSelectScene extends Phaser.Scene {
 
   startFight() {
     this.starting = true;
-    const sceneKey = SCENE_ORDER[this.sceneIndex] || DEFAULT_SCENE;
+    const sceneKey = STAGE_ORDER[this.sceneIndex] || DEFAULT_STAGE;
 
     playUi(this, 'select');
 
@@ -318,7 +320,7 @@ export default class SceneSelectScene extends Phaser.Scene {
     flash.setScale(0.5);
     this.tweens.add({ targets: flash, scale: 1, duration: 350, ease: 'Back.out' });
 
-    this.time.delayedCall(700, () => this.scene.start('fight', {
+    this.time.delayedCall(700, () => this.scene.start(SCENE_KEYS.FIGHT, {
       selections: this.selections,
       mode: this.mode,
       scene: sceneKey,

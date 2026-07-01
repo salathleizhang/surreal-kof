@@ -7,6 +7,12 @@
 // a GeneratedFighter can play it. Textures live in Phaser's global manager, so a
 // character loaded once (e.g. on the select screen) is available in the fight.
 
+import {
+  getGeneratedCharacter,
+  hasGeneratedCharacter,
+  registerGeneratedCharacter,
+} from '../state/generatedCharacters.js';
+
 // Which engine FSM state each generated animation drives.
 const KEY_TO_STATE = {
   idle: 0, walk: 1, attack1: 4, attack2: 7, super: 8, intro: 9, death: 6,
@@ -18,22 +24,32 @@ const FRAME_RATE = {
   loop: 6, yoyo: 3, forward: 4, hold: 5,
 };
 
-// id -> { id, name, cn, portrait, srcW, srcH, animMeta, moves }
-export const GENERATED = {};
-
 function pad4(n) { return String(n).padStart(4, '0'); }
 
 // Load a list of {key,url} images through the scene loader, resolving once all
 // have finished (or rejecting on the first hard error).
 function loadImages(scene, entries) {
   return new Promise((resolve, reject) => {
-    if (!entries.length) { resolve(); return; }
+    const pending = entries.filter((entry) => !scene.textures.exists(entry.key));
+    if (!pending.length) { resolve(); return; }
+
     const loader = scene.load;
-    entries.forEach((e) => {
-      if (!scene.textures.exists(e.key)) loader.image(e.key, e.url);
-    });
-    loader.once('complete', resolve);
-    loader.once('loaderror', (file) => reject(new Error(`Failed to load ${file.key || file.src}`)));
+    const cleanup = () => {
+      loader.off('complete', handleComplete);
+      loader.off('loaderror', handleError);
+    };
+    const handleComplete = () => {
+      cleanup();
+      resolve();
+    };
+    const handleError = (file) => {
+      cleanup();
+      reject(new Error(`Failed to load ${file.key || file.src}`));
+    };
+
+    pending.forEach((entry) => loader.image(entry.key, entry.url));
+    loader.once('complete', handleComplete);
+    loader.once('loaderror', handleError);
     loader.start();
   });
 }
@@ -54,7 +70,7 @@ function aliasFrames(scene, id, fromState, toState, count) {
 // URL prefix (default '') in case assets are served from a sub-path.
 export async function loadGeneratedCharacter(scene, manifest, base = '') {
   const { id } = manifest;
-  if (GENERATED[id]) return GENERATED[id];
+  if (hasGeneratedCharacter(id)) return getGeneratedCharacter(id);
 
   // Build the full frame list across every animation.
   const entries = [];
@@ -119,8 +135,7 @@ export async function loadGeneratedCharacter(scene, manifest, base = '') {
     animMeta,
     moves: manifest.moves || {},
   };
-  GENERATED[id] = entry;
-  return entry;
+  return registerGeneratedCharacter(entry);
 }
 
 // Fetch the generated-character index and load every previously-made fighter so
@@ -132,12 +147,23 @@ export async function loadGeneratedIndex(scene, base = '') {
     if (resp.ok) index = await resp.json();
   } catch { index = []; }
 
-  const loaded = [];
-  for (const item of index) {
+  if (!Array.isArray(index) || !index.length) return [];
+
+  // Manifest requests are independent network operations. Fetch them together,
+  // then feed their image frames through Phaser's single loader in sequence.
+  const manifests = await Promise.all(index.map(async (item) => {
     try {
-      const m = await fetch(`${base}${item.manifest}`, { cache: 'no-store' });
-      if (!m.ok) continue;
-      const manifest = await m.json();
+      const response = await fetch(`${base}${item.manifest}`, { cache: 'no-store' });
+      return response.ok ? await response.json() : null;
+    } catch {
+      return null;
+    }
+  }));
+
+  const loaded = [];
+  for (const manifest of manifests) {
+    if (!manifest) continue;
+    try {
       loaded.push(await loadGeneratedCharacter(scene, manifest, base));
     } catch { /* skip a broken entry, keep the rest */ }
   }

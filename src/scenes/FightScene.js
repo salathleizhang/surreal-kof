@@ -1,10 +1,10 @@
 import Phaser from 'phaser';
-import { STATUS } from '../objects/Player.js';
-import {
-  getCharacter, DEFAULT_CHARACTER, SCENES, DEFAULT_SCENE,
-} from '../objects/roster.js';
+import { STATUS } from '../config/combat.js';
+import { getCharacter, DEFAULT_CHARACTER } from '../objects/roster.js';
+import { getStage } from '../data/stages.js';
 import { PIXEL_FONT, PIXEL_FONT_CN } from '../fonts.js';
 import { playUi, stopMenuBgm } from '../audio.js';
+import { SCENE_KEYS } from '../config/game.js';
 
 const ROUND_TIME_MS = 60000;
 // Pre-fight ceremony: hold the action while the "Round 1, Fight!" announcer
@@ -20,15 +20,15 @@ const BORDER = 5;
 
 export default class FightScene extends Phaser.Scene {
   constructor() {
-    super('fight');
+    super(SCENE_KEYS.FIGHT);
   }
 
   create(data) {
     const { width, height } = this.scale;
 
-    // The stage chosen on the scene-select screen (key into SCENES); falls back
+    // The stage chosen on the scene-select screen; falls back
     // to the configured default if the fight is launched directly in development.
-    const scene = SCENES[(data && data.scene)] || SCENES[DEFAULT_SCENE];
+    const scene = getStage(data && data.scene);
     this.game.canvas.setAttribute('aria-label', `战斗场景：${scene.cn}`);
     this.createBackground(width, height, scene);
 
@@ -402,7 +402,7 @@ export default class FightScene extends Phaser.Scene {
       });
 
       // Any key (or tap) returns to the title screen, which restarts the menu BGM.
-      const toTitle = () => this.scene.start('title');
+      const toTitle = () => this.scene.start(SCENE_KEYS.TITLE);
       this.input.keyboard.once('keydown', toTitle);
       this.input.once('pointerdown', toTitle);
     });

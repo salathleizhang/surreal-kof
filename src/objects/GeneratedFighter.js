@@ -1,15 +1,16 @@
-import Player, { STATUS } from './Player.js';
-import { GENERATED } from './generatedRoster.js';
+import Player from './Player.js';
+import { STATUS } from '../config/combat.js';
+import { getGeneratedCharacter } from '../state/generatedCharacters.js';
 
 // A data-driven fighter built from an AI-generated manifest. All of its art and
-// per-state animation metadata come from the GENERATED registry (populated by
-// generatedRoster.loadGeneratedCharacter); this class just wires that metadata
+// per-state animation metadata come from the generated-character registry (populated by
+// services/generatedCharacters.loadGeneratedCharacter); this class wires that metadata
 // into the Player FSM and computes how the full-body sprite sits on the hitbox.
 export default class GeneratedFighter extends Player {
   constructor(scene, info) {
     const id = info.charKey;
     super(scene, { ...info, texturePrefix: id });
-    this.entry = GENERATED[id];
+    this.entry = getGeneratedCharacter(id);
     this.moveData = this.entry ? this.entry.moves : {};
     this.init_animations();
 

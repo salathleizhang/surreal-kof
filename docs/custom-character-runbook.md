@@ -1,9 +1,9 @@
 # 自定义格斗角色生成手册（手动流水线 / 不改仓库代码）
 
 把一张人物照片 + 招式设定 + 招式姿势参考图，变成一个**可直接进游戏选用的 KOF 角色**。
-本流程**绕过 app 里的「+」自动流水线**（`server/character-pipeline.mjs`，那个 prompt 写死、动作随机），
+本流程**绕过 app 里的「+」自动流水线**（`server/character-pipeline.ts`，那个 prompt 写死、动作随机），
 改为**手动用自定义 prompt + 你的参考图**驱动后端模型，产物落到 `public/assets/player/<id>/`。
-**全程不修改任何仓库源码**，脚本只 `import` 现成的 `server/mule.mjs` 和 `server/matte.mjs`。
+**全程不修改任何仓库源码**，脚本只 `import` 现成的 `server/mule.ts` 和 `server/matte.ts`。
 
 ---
 
@@ -14,7 +14,7 @@
 - Node ≥ 20，仓库已 `npm install`（需要 `pngjs`，已是依赖）。
 - 临时脚本放 scratchpad，不要进 git。参考图放 `scratchpad-refs/`（已在 .gitignore 风格之外，提交前请清理或忽略）。
 
-> 注意：本流程**直接调 `mulerun studio run`**，不需要启动 `server/local-api.mjs`。
+> 注意：本流程**直接调 `mulerun studio run`**，不需要启动 `server/local-api.ts`。
 
 ---
 
@@ -32,7 +32,7 @@
   - 参数只有：`image`(首帧) / `last-frame-image`(尾帧) / `prompt`(动作文字) / `resolution`(480p/720p/1080p) / `aspect-ratio` / `duration`(4..15) / `generate-audio` / `seed`。
   - 返回 `result.videos[]` 是临时 URL，立刻下载。
   - ⚠️ **没有任何「镜头控制」参数**（见 §5 的坑）。
-- 抠图：洋红 `#FF00FF` 背景 → `import { matteFile } from server/matte.mjs`（`matteFile(srcAbs, destAbs)`）。
+- 抠图：洋红 `#FF00FF` 背景 → `import { matteFile } from server/matte.ts`（`matteFile(srcAbs, destAbs)`）。
 
 ---
 
@@ -140,17 +140,17 @@ mulerun studio run google/nano-banana-pro/edit --json --quiet \
   --images "[\"$R1\",\"$R2\"]" > /tmp/base.json
 URL=$(grep -o 'https://[^"]*result_00.png' /tmp/base.json | head -1)
 curl -s "$URL" -o "$DIR/base.png"
-node --input-type=module -e "import {matteFile} from '$ROOT/server/matte.mjs'; await matteFile('$DIR/base.png','$DIR/base.preview.png');"
+npx tsx -e "import {matteFile} from '$ROOT/server/matte.ts'; await matteFile('$DIR/base.png','$DIR/base.preview.png');"
 open "$DIR/base.preview.png"
 ```
 
-### 6.2 关键帧 `genkf.mjs`
-```js
+### 6.2 关键帧 `genkf.ts`
+```ts
 // 注意：静态 import 用绝对路径字面量（不能用模板字符串）。把下面两行的仓库根换成实际路径。
 import { spawn } from 'node:child_process';
 import { writeFile, mkdir, copyFile } from 'node:fs/promises';
-import { runStudio } from '/Users/junwei/Documents/GitHub/kof-ai/server/mule.mjs';
-import { matteFile } from '/Users/junwei/Documents/GitHub/kof-ai/server/matte.mjs';
+import { runStudio } from '/Users/junwei/Documents/GitHub/kof-ai/server/mule.ts';
+import { matteFile } from '/Users/junwei/Documents/GitHub/kof-ai/server/matte.ts';
 const ROOT = '/Users/junwei/Documents/GitHub/kof-ai';
 const CHARID = 'caixukun';
 const CHAR = `${ROOT}/public/assets/player/${CHARID}`, REF = `${ROOT}/scratchpad-refs`, BASE = `${CHAR}/base.png`, KF = `${CHAR}/kf`;
@@ -180,10 +180,10 @@ console.log('DONE');
 ```
 > 注：`import ... from \`${ROOT}/...\`` 的模板字符串写法在静态 import 里不合法——实际用绝对路径字面量，或 `await import(...)` 动态导入。下方 §6.3 用的是绝对路径字面量，照那个写。
 
-### 6.3 视频 + manifest `genvid.mjs`
-见仓库历史 / 本次会话生成的 `genvid_cxk.mjs`：核心是上表 7 个动作 + §5 的 `CAM` 前缀 + 钳制稳定（`clamp(H0/h, 0.85, 1.18)`，仅 `stabilize:true` 的动作），最后写 manifest 和 generated-index。关键片段：
+### 6.3 视频 + manifest `genvid.ts`
+旧版临时脚本迁移为 `.ts` 后，核心仍是上表 7 个动作 + §5 的 `CAM` 前缀 + 钳制稳定（`clamp(H0/h, 0.85, 1.18)`，仅 `stabilize:true` 的动作），最后写 manifest 和 generated-index。关键片段：
 
-```js
+```ts
 // 每个动作：
 const out = await runStudio('bytedance/seedance-2.0/image-to-video', {
   image: a.first, lastFrameImage: a.last, prompt: CAM + a.motion,   // CAM = §5 固定机位措辞

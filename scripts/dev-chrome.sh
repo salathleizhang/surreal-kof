@@ -20,7 +20,7 @@ if [ ! -x "$CHROME" ]; then
   exit 1
 fi
 
-# Start Vite without its own auto-open (NO_OPEN is read by vite.config.js).
+# Start Vite without its own auto-open (NO_OPEN is read by vite.config.ts).
 NO_OPEN=1 npx vite --port "$PORT" --strictPort &
 VITE_PID=$!
 trap 'kill "$VITE_PID" 2>/dev/null' EXIT INT TERM

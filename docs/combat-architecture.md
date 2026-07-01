@@ -14,10 +14,10 @@ input / AI -> SkillRunner -> timed skill events
                               `-- visual/audio effect
 ```
 
-- `src/combat/Fighter.js` owns locomotion, HP, animation playback and reactions.
-- `src/combat/SkillRunner.js` runs declarative skill timelines.
-- `src/combat/CollisionWorld.js` resolves pushboxes, hurtboxes, hitboxes and projectiles.
-- `src/combat/effects/EffectSystem.js` maps effect names to presentation code.
+- `src/combat/Fighter.ts` owns locomotion, HP, animation playback and reactions.
+- `src/combat/SkillRunner.ts` runs declarative skill timelines.
+- `src/combat/CollisionWorld.ts` resolves pushboxes, hurtboxes, hitboxes and projectiles.
+- `src/combat/effects/EffectSystem.ts` maps effect names to presentation code.
 - `src/characters/` contains character combat definitions.
 
 The engine is shared; tuning is not. Do not add new skill branches to `Fighter`.

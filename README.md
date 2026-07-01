@@ -41,7 +41,7 @@ A horizontal fighting game built with the **Phaser 3** game engine and JavaScrip
 ### GIF assets
 
 - The original art ships as animated GIFs. A small bundled decoder
-  (`src/utils/gif.js`) composites each GIF frame onto a `<canvas>`, which is
+  (`src/utils/gif.ts`) composites each GIF frame onto a `<canvas>`, which is
   registered as a Phaser texture (`registerGifTextures`) so the existing artwork
   is reused as-is — no asset conversion required.
 
@@ -58,14 +58,14 @@ A horizontal fighting game built with the **Phaser 3** game engine and JavaScrip
 
 - The menus play short system SFX: `cursor` (move/switch fighter), `select`
   (confirm), `cancel` (un-confirm) and `start` (leave title / FIGHT!).
-- `src/audio.js` is the single source of truth — `loadUiSounds()` queues them in
+- `src/audio.ts` is the single source of truth — `loadUiSounds()` queues them in
   `PreloadScene` and `playUi(scene, name)` plays them. The browser only unlocks
   audio after a user gesture, so the first sound you hear is `start` on the
   title screen.
 - `cursor`/`select`/`start` in `public/assets/sounds/ui/` are real King of
   Fighters '97/'98 menu rips; `cancel` is a synthesised placeholder (no clean
   KOF cancel rip was freely available). To swap any of them, drop a new file in
-  and point its entry in `src/audio.js` at it. Good sources:
+  and point its entry in `src/audio.ts` at it. Good sources:
   [The Sounds Resource (KOF XV)](https://sounds.spriters-resource.com/pc_computer/thekingoffightersxv/),
   [爱给网 选择角色](https://www.aigei.com/sound/class/xuan_ze_ji/),
   [OpenGameArt GUI sounds](https://opengameart.org/content/gui-sound-effects).

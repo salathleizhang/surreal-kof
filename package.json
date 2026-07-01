@@ -6,9 +6,10 @@
   "scripts": {
     "dev": "vite",
     "dev:music": "bash scripts/dev-chrome.sh",
-    "local-api": "node server/local-api.mjs",
-    "build": "vite build",
-    "test": "node --test",
+    "local-api": "node --import tsx server/local-api.ts",
+    "typecheck": "tsc --noEmit",
+    "build": "npm run typecheck && vite build",
+    "test": "node --import tsx --test test/**/*.test.ts",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -17,6 +18,10 @@
     "pngjs": "^7.0.0"
   },
   "devDependencies": {
+    "@types/node": "^26.1.0",
+    "@types/pngjs": "^6.0.5",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3",
     "vite": "^5.4.0"
   }
 }

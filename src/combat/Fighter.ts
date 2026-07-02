@@ -152,6 +152,10 @@ export default class Fighter {
 
   updateControl(): void {
     if (this.scene.introActive || this.scene.gameOver || this.isDead()) return;
+    // Hit reactions own the fighter until their animation finishes. Do not
+    // even sample buffered player/AI input while stunned; any movement during
+    // this state must come from authored knockback, not character controls.
+    if (this.combatState === FIGHTER_STATE.HITSTUN) return;
     const input = this.readInput();
     if (this.skillRunner.tryStartFromInput(input)) return;
     if (!this.canStartSkill()) return;
@@ -299,6 +303,9 @@ export default class Fighter {
     this.frame_current_cnt = 0;
     this.hp = Math.max(this.hp - damage, 0);
 
+    // Cancel momentum inherited from walking or an interrupted skill. A hit
+    // may still move the victim when it explicitly defines knockback below.
+    this.vx = 0;
     if (hit.knockback) {
       const direction = hit.attacker ? hit.attacker.direction : -this.direction;
       this.vx = (hit.knockback.x || 0) * direction;

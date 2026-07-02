@@ -4,6 +4,7 @@ import { getGeneratedCharacter } from '../state/generatedCharacters.ts';
 import { createGeneratedCombatDefinition } from '../characters/generated/createCombatDefinition.ts';
 import type { FighterCreateInfo } from '../combat/Fighter.ts';
 import type { GeneratedCharacterEntry, GeneratedMove } from '../types/generatedCharacter.ts';
+import type { AnimationDefinition } from '../types/combat.ts';
 
 type GeneratedFighterInfo = Omit<FighterCreateInfo, 'texturePrefix' | 'combat'> & { charKey: string };
 
@@ -61,14 +62,18 @@ export default class GeneratedFighter extends Fighter {
         });
         continue;
       }
-      this.animations.set(state, {
+      const animation: AnimationDefinition = {
         frame_cnt: meta.frame_cnt,
         frame_rate: meta.frame_rate,
         playback: meta.playback,
         offset_y: offsetY,
         offset_x: offsetX,
         scale,
-      });
+      };
+      if (state === STATUS.SUPER && entry.superBackground) {
+        animation.background = { ...entry.superBackground };
+      }
+      this.animations.set(state, animation);
     }
   }
 }

@@ -9,6 +9,7 @@ export interface GeneratedAnimationManifest {
   engineState?: AnimationState;
   frameRate?: number;
   fullscreen?: boolean;
+  matte?: boolean;
 }
 
 export interface GeneratedMove {
@@ -21,7 +22,9 @@ export interface GeneratedCharacterManifest {
   id: string;
   name?: string;
   cn?: string;
+  portrait?: string;
   anims: Record<string, GeneratedAnimationManifest>;
+  superBackground?: GeneratedAnimationManifest;
   moves?: Record<string, GeneratedMove>;
   combat?: CombatDefinition;
 }
@@ -31,14 +34,20 @@ export interface GeneratedAnimationMeta extends AnimationDefinition {
   srcH?: number;
 }
 
+export interface GeneratedBackgroundMeta extends GeneratedAnimationMeta {
+  texturePrefix: string;
+}
+
 export interface GeneratedCharacterEntry {
   id: string;
   name: string;
   cn: string;
   portrait: string;
+  figure: string;
   srcW: number;
   srcH: number;
   animMeta: Record<string, GeneratedAnimationMeta>;
+  superBackground?: GeneratedBackgroundMeta;
   moves: Record<string, GeneratedMove>;
   combat: CombatDefinition;
 }

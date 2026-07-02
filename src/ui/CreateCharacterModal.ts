@@ -18,11 +18,14 @@ const FONT = '"Press Start 2P", "PingFang SC", "Microsoft YaHei", sans-serif';
 const ANIM_LABELS = {
   idle: '站立 IDLE',
   walk: '行走 WALK',
+  jump: '跳跃 JUMP',
   attack1: '攻击1 ATK1',
   attack2: '攻击2 ATK2',
   intro: '入场 INTRO',
   death: '倒地 DEATH',
-  super: '大招 SUPER',
+  super: '大招动作 SUPER ACTION',
+  superBackground: '大招背景 SUPER BG',
+  portrait: '选择头像 PORTRAIT',
 };
 const STEPS = ['信息', 'BASE 图', '首尾帧', '生成'];
 
@@ -293,15 +296,16 @@ export function openCreateCharacterModal({
     const keyframes = Object.entries(job.keyframes || {}) as Array<[string, any]>;
     const cards = keyframes.map(([key, kf]) => {
       const label = kf.label && kf.label !== key ? `${ANIM_LABELS[key] || key} · ${kf.label}` : (ANIM_LABELS[key] || key);
+      const previewClass = kf.transparent ? ' kof-cc-checker' : '';
       let body;
       if (!kf.generated) {
         body = '<div class="kof-cc-reuse">复用 BASE 图<br>（首尾帧都是站立，无需生成）</div>';
       } else if (kf.single) {
-        body = `<div class="kof-cc-thumbs"><img class="kof-cc-thumb kof-cc-checker" src="${asset(kf.first)}"/></div>`;
+        body = `<div class="kof-cc-thumbs"><img class="kof-cc-thumb${previewClass}" src="${asset(kf.first)}"/></div>`;
       } else {
         body = `<div class="kof-cc-thumbs">
-            <img class="kof-cc-thumb kof-cc-checker" src="${asset(kf.first)}"/>
-            <img class="kof-cc-thumb kof-cc-checker" src="${asset(kf.last)}"/>
+            <img class="kof-cc-thumb${previewClass}" src="${asset(kf.first)}"/>
+            <img class="kof-cc-thumb${previewClass}" src="${asset(kf.last)}"/>
           </div>`;
       }
       const regen = kf.generated ? `<span class="kof-cc-mini" data-regen="${key}">↻</span>` : '';
@@ -318,7 +322,7 @@ export function openCreateCharacterModal({
   function renderFramesProgress() {
     setSteps(3);
     bodyEl.innerHTML = `
-      <div class="kof-cc-cap" style="margin:6px 0 14px;">正在为 7 套动画生成视频、抽帧、抠图并转成游戏帧。<br>这一步最久（每个动作一段视频），请稍候…</div>
+      <div class="kof-cc-cap" style="margin:6px 0 14px;">正在生成 8 套角色动作与 1 套独立大招背景。<br>动作会抽帧抠图，背景只抽帧不抠图；这一步最久，请稍候…</div>
       <div class="kof-cc-bar show"><div class="kof-cc-bar-fill"></div><span class="kof-cc-pct"></span></div>
       <div class="kof-cc-status"></div>`;
     footEl.innerHTML = '<button class="kof-cc-btn cancel" data-act="close">后台运行</button>';

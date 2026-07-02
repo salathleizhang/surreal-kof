@@ -1,9 +1,10 @@
 // Custom-character generation pipeline.
 //
 // Given an uploaded photo + a name, this produces a fully playable KOF fighter:
-//   research (LLM) -> base sprite (nano-banana) -> per-anim start/end keyframes
-//   (nano-banana edit) -> per-anim video (seedance i2v) -> frame extraction
-//   (ffmpeg) -> chroma-key matte -> manifest.json.
+//   base sprite -> portrait + per-anim keyframes -> videos -> frame extraction
+//   -> chroma-key matte -> manifest.json. The super is assembled from two
+//   independently generated assets: a transparent fighter action and a
+//   full-screen background animation that never receives the character image.
 //
 // It runs inside the local-api process as a long-lived async job; callers start
 // a job and poll its status. Final assets land in public/assets/player/<id>/ so
@@ -22,9 +23,11 @@ import { matteFile } from './matte.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = join(__dirname, '..', 'public');
-const PLAYER_DIR = join(PUBLIC_DIR, 'assets', 'player');
+// Tests can isolate generated output in a temp directory without touching the
+// real roster; production keeps writing to Vite's public asset tree.
+const PLAYER_DIR = process.env.KOF_GENERATED_PLAYER_DIR || join(PUBLIC_DIR, 'assets', 'player');
 
-// The seven generated animations. `engineState` maps each onto the fighter FSM
+// The eight generated fighter animations. `engineState` maps each onto the fighter FSM
 // (0 idle, 1 walk, 4 attack, 6 death) or a named extra state (intro/attack2/
 // super). `frames` is how many sprites we keep — longer actions keep more.
 // `playback`: loop | forward | yoyo (out-and-back retract) | hold (freeze last).
@@ -32,12 +35,9 @@ const PLAYER_DIR = join(PUBLIC_DIR, 'assets', 'player');
 // attack1 = a PUNCH (技能1 出拳), attack2 = a KICK (技能2 踢腿) — two distinct
 // moves, not the same generic strike.
 //
-// `matte: false` keeps the background. The super (大招) is special: it is a
-// cinematic full-screen move, so it keeps its background (no chroma-key cutout),
-// is generated LANDSCAPE (`aspect`) at a larger `vidRes` so it can fill the whole
-// screen, runs longer (more `frames`) and uses an explicit `frameRate` so it
-// plays for ~4s in game. `fullscreen: true` tells the client to draw it covering
-// the stage instead of anchored to the hitbox.
+// The super action itself now follows the same 3:4 + magenta + matte pipeline as
+// every other fighter animation. Its cinematic 16:9 background is described by
+// SUPER_BACKGROUND below and is rendered as a separate layer in the client.
 //
 // `startKf` / `endKf` describe the keyframe plan, so we never waste a generation
 // on a frame we already have:
@@ -54,6 +54,9 @@ export const ANIMS = [
     key: 'walk', engineState: 1, duration: 4, frames: 8, playback: 'loop', matte: true, startKf: 'gen', endKf: 'same',
   },
   {
+    key: 'jump', engineState: 3, duration: 4, frames: 8, playback: 'forward', matte: true, startKf: 'base', endKf: 'gen',
+  },
+  {
     key: 'attack1', engineState: 4, duration: 4, frames: 7, playback: 'yoyo', matte: true, startKf: 'base', endKf: 'gen',
   },
   {
@@ -66,9 +69,23 @@ export const ANIMS = [
     key: 'death', engineState: 6, duration: 5, frames: 10, playback: 'hold', matte: true, startKf: 'base', endKf: 'gen',
   },
   {
-    key: 'super', engineState: 'super', duration: 8, frames: 25, frameRate: 10, playback: 'forward', matte: false, fullscreen: true, aspect: '16:9', imgRes: '2K', vidRes: '1080p', startKf: 'gen', endKf: 'same',
+    key: 'super', engineState: 'super', duration: 8, frames: 25, frameRate: 10, playback: 'forward', matte: true, startKf: 'base', endKf: 'gen',
   },
 ];
+
+// A second, character-free asset for the super. Its still is generated from
+// text only, then animated and sampled exactly like the fighter videos, but the
+// extracted frames keep their opaque background.
+const SUPER_BACKGROUND = {
+  key: 'superBackground', dir: 'super-background', duration: 8, frames: 25,
+  frameRate: 10, playback: 'forward', matte: false, fullscreen: true,
+  aspect: '16:9', imgRes: '2K', vidRes: '1080p', startKf: 'gen', endKf: 'same',
+  characterReference: false,
+};
+
+const FRAME_ASSETS = [...ANIMS, SUPER_BACKGROUND];
+const PORTRAIT_ASSET = { key: 'portrait' };
+const REVIEW_ASSETS = [...FRAME_ASSETS, PORTRAIT_ASSET];
 
 const ASPECT = '3:4'; // tall full-body framing for both stills and video
 const IMG_RES = '1K';
@@ -85,6 +102,13 @@ const STYLE_BASE = 'retro 16-bit pixel-art fighting game sprite in King of Fight
   + 'crisp clean pixels, no text, no UI, no health bar, sharp silhouette';
 const MAGENTA_BG = 'flat solid pure magenta #FF00FF background, evenly lit, no shadows on the floor, '
   + 'the background is one uniform magenta color with nothing else';
+const SUPER_BACKGROUND_STYLE = 'retro 16-bit pixel-art cinematic fighting-game special-move background, '
+  + 'landscape composition filled edge-to-edge with dramatic energy, speed lines, shockwaves and layered light effects, '
+  + 'environment and abstract visual effects only, absolutely no person, no fighter, no character, no face, no body, '
+  + 'no silhouette, no text, no logo, no UI, no health bar';
+const PORTRAIT_STYLE = 'retro 16-bit pixel-art King of Fighters character-select portrait, square head-and-shoulders close-up, '
+  + 'same exact face, hairstyle, outfit colours and identity as the reference character, centered face, confident expression, '
+  + 'crisp clean pixels, bold arcade lighting, simple dark arena backdrop, no text, no logo, no UI';
 
 const MOVE_NAME_BANK = {
   attack1: ['疾风直拳', '裂空拳', '爆裂冲拳', '破军拳', '闪电拳'],
@@ -114,14 +138,16 @@ function fixedProfile(name) {
   const anims = {
     idle: { startPose: 'relaxed ready fighting idle stance', endPose: 'relaxed ready fighting idle stance', motion: 'subtle idle breathing, standing ready in a fighting stance' },
     walk: { startPose: 'walking forward in a fighting game', endPose: 'walking forward in a fighting game', motion: 'walking forward in a steady seamless loop' },
+    jump: { startPose: 'ready fighting stance before jumping', endPose: 'airborne at the apex of a vertical fighting-game jump, knees bent and whole body visible', motion: 'jumps vertically into the air in a quick athletic fighting-game jump, keeping the whole body visible' },
     // 技能1 = 出拳 (punch): an arm/fist strike.
     attack1: { startPose: 'ready fighting stance with both fists raised in front of the face', endPose: 'throwing a straight punch, one arm fully extended forward with the fist striking toward the opponent', motion: 'throws a single fast straight punch with the fist toward the opponent, then snaps the arm back to a guarding stance' },
     // 技能2 = 踢腿 (kick): a leg strike (clearly different from the punch).
     attack2: { startPose: 'ready fighting stance, weight balanced on the back leg', endPose: 'performing a powerful kick, one leg extended high and forward with the foot striking toward the opponent', motion: 'performs a single fast powerful kick, swinging one leg up and forward to strike the opponent with the foot, then plants the leg back down into stance' },
     intro: { startPose: 'standing neutral', endPose: 'a confident dynamic entrance pose, taunting', motion: 'steps in and strikes a confident entrance pose' },
     death: { startPose: 'staggering, knocked off balance', endPose: 'knocked down, defeated, lying on the ground', motion: 'gets knocked back and collapses to the ground defeated' },
-    // 大招 (super): a cinematic, full-screen desperation move with huge effects.
-    super: { startPose: 'charging up a devastating special move, energy gathering around the whole body', endPose: 'unleashing an explosive full-screen special move with massive dramatic energy effects filling the entire scene', motion: 'unleashes a devastating cinematic special move with huge explosive energy effects, beams and shockwaves that fill the entire screen' },
+    // The fighter and the cinematic background are intentionally independent.
+    super: { startPose: 'ready to perform a devastating special move', endPose: 'unleashing a powerful signature special-move pose with arms and body fully visible', motion: 'charges and unleashes a devastating signature fighting-game special move with a strong full-body action' },
+    superBackground: { startPose: 'a climactic arena overwhelmed by a violent energy vortex, explosive beams and expanding shockwaves', endPose: 'same cinematic energy vortex', motion: 'energy surges, beams sweep across the scene and shockwaves expand dramatically; keep the camera locked and never introduce any person or character' },
   };
   return {
     nameEn: name, nameCn: name, summary: '', anims, moves: buildMoves(),
@@ -277,6 +303,45 @@ function synthFrame(width, height, t, hue) {
   return png;
 }
 
+// Character-free cinematic mock used to prove that the background layer is a
+// genuinely separate opaque asset even when the paid models are bypassed.
+function synthBackdropFrame(width, height, t, hue) {
+  const png = new PNG({ width, height });
+  const [r, g, b] = hsv(hue, 0.78, 0.85);
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const i = (y * width + x) * 4;
+      const wave = (Math.sin((x / width) * Math.PI * 8 + t * Math.PI * 2) + 1) / 2;
+      const glow = Math.max(0, 1 - Math.hypot(x - width / 2, y - height / 2) / (width * 0.55));
+      png.data[i] = Math.min(255, Math.round(12 + r * glow + 70 * wave));
+      png.data[i + 1] = Math.min(255, Math.round(8 + g * glow + 24 * wave));
+      png.data[i + 2] = Math.min(255, Math.round(28 + b * glow + 90 * wave));
+      png.data[i + 3] = 255;
+    }
+  }
+  return png;
+}
+
+function synthPortraitFrame(hue) {
+  const size = 128;
+  const png = synthBackdropFrame(size, size, 0.3, hue);
+  const [r, g, b] = hsv(hue, 0.65, 0.95);
+  const draw = (x0, y0, x1, y1, color) => {
+    for (let y = Math.max(0, y0); y < Math.min(size, y1); y += 1) {
+      for (let x = Math.max(0, x0); x < Math.min(size, x1); x += 1) {
+        const i = (y * size + x) * 4;
+        [png.data[i], png.data[i + 1], png.data[i + 2], png.data[i + 3]] = [...color, 255];
+      }
+    }
+  };
+  draw(24, 82, 104, 128, [r, g, b]); // shoulders
+  draw(39, 26, 89, 88, [238, 188, 150]); // face
+  draw(34, 18, 94, 40, [35, 28, 42]); // hair
+  draw(48, 51, 55, 57, [28, 20, 35]);
+  draw(73, 51, 80, 57, [28, 20, 35]);
+  return png;
+}
+
 function hsv(h, s, v) {
   const c = v * s;
   const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
@@ -294,7 +359,9 @@ async function synthAnimFrames(anim, outDir, workDir, hue) {
   const paths = [];
   for (let i = 0; i < anim.frames; i += 1) {
     const t = anim.frames === 1 ? 1 : i / (anim.frames - 1);
-    const png = synthFrame(384, 512, anim.playback === 'loop' ? Math.sin(t * Math.PI) : t, hue);
+    const png = anim.key === SUPER_BACKGROUND.key
+      ? synthBackdropFrame(320, 180, t, hue)
+      : synthFrame(96, 128, anim.playback === 'loop' ? Math.sin(t * Math.PI) : t, hue);
     const dest = join(outDir, `${String(i + 1).padStart(4, '0')}.png`);
     if (anim.matte) {
       // Matte the synthetic magenta frame just like the real pipeline, so a mock
@@ -343,7 +410,7 @@ function kfHue(hueBase, anim) {
 // --- Review-gated wizard: three stages the client drives one at a time ---
 //
 //   base       research + base sprite                -> awaiting (review)
-//   keyframes  the start/end frames we actually need -> awaiting (review)
+//   keyframes  portrait + action/background anchors -> awaiting (review)
 //   frames     videos + extract + matte + manifest   -> done
 //
 // Each stage runs async; the client polls getJob until status === 'awaiting',
@@ -368,6 +435,7 @@ export function startCharacterJob({ name, photoPath, mock = false }) {
     log: [],
     profile: null,
     base: null,
+    portrait: null,
     keyframes: null,
     manifest: null,
     error: null,
@@ -375,6 +443,7 @@ export function startCharacterJob({ name, photoPath, mock = false }) {
     _photoPath: photoPath,
     _profile: null,
     _baseAbs: null,
+    _portraitAbs: null,
     _kf: {},
   };
   jobs.set(id, job);
@@ -456,7 +525,7 @@ async function stageBase(job, charDir, workDir, log) {
   job.progress = 0.4;
   const basePath = join(charDir, 'base.png');
   if (job.mock) {
-    await writeFile(basePath, PNG.sync.write(synthFrame(384, 512, 0, 200)));
+    await writeFile(basePath, PNG.sync.write(synthFrame(96, 128, 0, 200)));
   } else {
     const basePrompt = `${STYLE_BASE}. Neutral idle fighting stance. Keep the same person/character as the reference photo — their face, hairstyle, outfit and colours — but render the COMPLETE full body from head to toe even if the reference photo is only a face shot, a portrait or a half-body crop: invent and draw the rest of the body, legs and feet so the whole standing figure is shown. ${MAGENTA_BG}.`;
     await genImage({ from: job._photoPath, prompt: basePrompt, dest: basePath });
@@ -472,9 +541,9 @@ async function stageBase(job, charDir, workDir, log) {
   job.step = 'base 图已生成，确认后继续';
 }
 
-// Stage 2 — generate only the keyframes we don't already have (idle reuses the
-// base for both ends; loops reuse one pose for both; attacks reuse the base as
-// their first frame). `opts.target` redoes a single animation.
+// Stage 2 — generate the select-screen portrait plus only the keyframes we do
+// not already have. The super background deliberately uses text-to-image: the
+// uploaded character/base image is never included in that model request.
 async function stageKeyframes(job, charDir, log, opts: { target?: string } = {}) {
   const profile = job._profile || fixedProfile(job.name);
   const kfDir = join(charDir, 'kf');
@@ -486,26 +555,57 @@ async function stageKeyframes(job, charDir, log, opts: { target?: string } = {})
   const v = Date.now();
 
   let done = 0;
-  const total = ANIMS.length;
+  const total = REVIEW_ASSETS.length;
   const bump = () => { done += 1; job.progress = done / total; job.step = `首尾帧 ${done}/${total}…`; };
 
-  // The animations are independent — fan them out (bounded concurrency).
-  await mapPool(ANIMS, CONCURRENCY, async (anim) => {
-    // Single-anim redo: keep the others exactly as they were.
-    if (opts.target && opts.target !== anim.key && job._kf[anim.key]) { bump(); return; }
+  // Portrait, fighter actions and the background are independent — fan them
+  // out while preserving single-card regeneration in the review UI.
+  await mapPool(REVIEW_ASSETS, CONCURRENCY, async (anim) => {
+    const existing = anim.key === PORTRAIT_ASSET.key ? job._portraitAbs : job._kf[anim.key];
+    if (opts.target && opts.target !== anim.key && existing) { bump(); return; }
+
+    if (anim.key === PORTRAIT_ASSET.key) {
+      log('生成角色选择头像…');
+      const portraitAbs = join(charDir, 'portrait.png');
+      if (job.mock) {
+        await writeFile(portraitAbs, PNG.sync.write(synthPortraitFrame(job._hue)));
+      } else {
+        await genImage({
+          from: baseAbs,
+          prompt: PORTRAIT_STYLE,
+          dest: portraitAbs,
+          aspect: '1:1',
+          resolution: '1K',
+        });
+      }
+      job._portraitAbs = portraitAbs;
+      job.portrait = assetUrl(job.charId, 'portrait.png', v);
+      job.keyframes.portrait = {
+        label: '角色选择头像',
+        first: job.portrait,
+        last: job.portrait,
+        single: true,
+        generated: true,
+        transparent: false,
+      };
+      bump();
+      return;
+    }
 
     const a = profile.anims[anim.key];
     const generates = anim.startKf === 'gen' || anim.endKf === 'gen';
     log(generates ? `生成「${anim.key}」首尾帧…` : `「${anim.key}」复用 base（无需生成）`);
 
-    const bgRule = anim.matte
-      ? MAGENTA_BG
-      : 'dramatic dynamic energy-filled background with motion lines and effects';
-    const mkPrompt = (pose) => `${STYLE_BASE}. ${pose}. Same exact character as the reference. ${bgRule}.`;
+    const usesCharacter = anim.characterReference !== false;
+    const mkPrompt = (pose) => usesCharacter
+      ? `${STYLE_BASE}. ${pose}. Same exact character as the reference. ${MAGENTA_BG}.`
+      : `${SUPER_BACKGROUND_STYLE}. ${pose}.`;
+    const makeMockFrame = (t) => (usesCharacter
+      ? synthFrame(96, 128, t, kfHue(job._hue, anim))
+      : synthBackdropFrame(320, 180, t, kfHue(job._hue, anim)));
 
-    // Each frame has a magenta original (the seedance input, *Abs) and a matted
-    // preview (*PrevRel) shown to the user — except the super, which is keyed
-    // false and reviewed on its own dramatic background.
+    // Character anchors have a magenta original and a matted preview. The
+    // independent background is opaque and copied directly for review.
     const makePreview = async (srcAbs, prevAbs) => {
       if (anim.matte) await matteFile(srcAbs, prevAbs);
       else await copyFile(srcAbs, prevAbs);
@@ -517,8 +617,14 @@ async function stageKeyframes(job, charDir, log, opts: { target?: string } = {})
       firstAbs = baseAbs; firstPrevRel = 'base.preview.png';
     } else {
       firstAbs = join(kfDir, `${anim.key}-start.png`);
-      if (job.mock) await writeFile(firstAbs, PNG.sync.write(synthFrame(384, 512, 0, kfHue(job._hue, anim))));
-      else await genImage({ from: baseAbs, prompt: mkPrompt(a.startPose), dest: firstAbs, aspect: anim.aspect, resolution: anim.imgRes });
+      if (job.mock) await writeFile(firstAbs, PNG.sync.write(makeMockFrame(0)));
+      else await genImage({
+        from: usesCharacter ? baseAbs : undefined,
+        prompt: mkPrompt(a.startPose),
+        dest: firstAbs,
+        aspect: anim.aspect,
+        resolution: anim.imgRes,
+      });
       await makePreview(firstAbs, join(kfDir, `${anim.key}-start.preview.png`));
       firstPrevRel = `kf/${anim.key}-start.preview.png`;
     }
@@ -531,8 +637,14 @@ async function stageKeyframes(job, charDir, log, opts: { target?: string } = {})
       lastAbs = firstAbs; lastPrevRel = firstPrevRel;
     } else {
       lastAbs = join(kfDir, `${anim.key}-end.png`);
-      if (job.mock) await writeFile(lastAbs, PNG.sync.write(synthFrame(384, 512, 1, kfHue(job._hue, anim))));
-      else await genImage({ from: baseAbs, prompt: mkPrompt(a.endPose), dest: lastAbs, aspect: anim.aspect, resolution: anim.imgRes });
+      if (job.mock) await writeFile(lastAbs, PNG.sync.write(makeMockFrame(1)));
+      else await genImage({
+        from: usesCharacter ? baseAbs : undefined,
+        prompt: mkPrompt(a.endPose),
+        dest: lastAbs,
+        aspect: anim.aspect,
+        resolution: anim.imgRes,
+      });
       await makePreview(lastAbs, join(kfDir, `${anim.key}-end.preview.png`));
       lastPrevRel = `kf/${anim.key}-end.preview.png`;
     }
@@ -544,6 +656,7 @@ async function stageKeyframes(job, charDir, log, opts: { target?: string } = {})
       last: assetUrl(job.charId, lastPrevRel, v),
       single: lastPrevRel === firstPrevRel, // start == end (no separate last frame)
       generated: generates, // false when the whole anim just reuses the base
+      transparent: !!anim.matte,
     };
     bump();
   });
@@ -552,24 +665,26 @@ async function stageKeyframes(job, charDir, log, opts: { target?: string } = {})
   job.step = '首尾帧已生成，确认后生成视频';
 }
 
-// Stage 3 — for each anim: keyframes -> seedance video -> extract -> matte, then
-// write the manifest and register the character. Terminal (status: done).
+// Stage 3 — generate every fighter video plus the separate super background,
+// then write the manifest and register the character. Terminal (status: done).
 async function stageFrames(job, charDir, workDir, log) {
   const profile = job._profile || fixedProfile(job.name);
   const baseAbs = job._baseAbs || join(charDir, 'base.png');
   const manifestAnims = {};
+  let manifestSuperBackground = null;
 
   let done = 0;
-  const total = ANIMS.length;
+  const total = FRAME_ASSETS.length;
   const bump = () => { done += 1; job.progress = done / total; job.step = `视频与抽帧 ${done}/${total}…`; };
 
   // Each anim's video -> extract -> matte is independent; fan out the (slow)
   // seedance calls with bounded concurrency.
-  await mapPool(ANIMS, CONCURRENCY, async (anim) => {
+  await mapPool(FRAME_ASSETS, CONCURRENCY, async (anim) => {
     const a = profile.anims[anim.key];
     const animWork = join(workDir, anim.key);
     await mkdir(animWork, { recursive: true });
-    const outDir = join(charDir, anim.key);
+    const assetDir = anim.dir || anim.key;
+    const outDir = join(charDir, assetDir);
     await rm(outDir, { recursive: true, force: true });
     await mkdir(outDir, { recursive: true });
 
@@ -602,17 +717,17 @@ async function stageFrames(job, charDir, workDir, log) {
       }
     }
 
-    manifestAnims[anim.key] = {
-      engineState: anim.engineState,
-      dir: `assets/player/${job.charId}/${anim.key}`,
+    const manifestAnimation = {
+      ...(anim.engineState !== undefined ? { engineState: anim.engineState } : {}),
+      dir: `assets/player/${job.charId}/${assetDir}`,
       frames: framePaths.length,
       playback: anim.playback,
       matte: anim.matte,
-      // Carried only when set: the super needs an explicit play rate (~4s) and a
-      // full-screen render flag; everything else falls back to client defaults.
       ...(anim.frameRate ? { frameRate: anim.frameRate } : {}),
       ...(anim.fullscreen ? { fullscreen: true } : {}),
     };
+    if (anim.key === SUPER_BACKGROUND.key) manifestSuperBackground = manifestAnimation;
+    else manifestAnims[anim.key] = manifestAnimation;
     bump();
   });
 
@@ -623,8 +738,9 @@ async function stageFrames(job, charDir, workDir, log) {
     cn: profile.nameCn || job.name,
     summary: profile.summary || '',
     base: `assets/player/${job.charId}/base.png`,
-    portrait: `assets/player/${job.charId}/idle/0001.png`,
+    portrait: `assets/player/${job.charId}/portrait.png`,
     anims: manifestAnims,
+    superBackground: manifestSuperBackground,
     moves: profile.moves || {},
     createdAt: Date.now(),
   };

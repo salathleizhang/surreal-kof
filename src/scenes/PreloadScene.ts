@@ -79,6 +79,10 @@ export default class PreloadScene extends Phaser.Scene {
           selections: [params.get('p1') || 'kyo', params.get('p2') || 'kyo'],
           scene: params.get('stage') || undefined,
         });
+      } else if (import.meta.env.DEV && params.get('dev') === 'select') {
+        this.scene.start(SCENE_KEYS.CHARACTER_SELECT, {
+          mode: params.get('mode') || 'single',
+        });
       } else {
         this.scene.start(SCENE_KEYS.TITLE);
       }

@@ -119,6 +119,13 @@ export default class SelectScene extends Phaser.Scene {
 
     // Keep the menu theme going (no-op if it's already playing from the title).
     startMenuBgm(this);
+
+    // Browser QA can enter the DOM wizard directly while still exercising the
+    // real scene integration. Both flags are development-only.
+    const params = new URLSearchParams(globalThis.location?.search || '');
+    if (import.meta.env.DEV && params.get('openCreator') === '1') {
+      this.time.delayedCall(900, () => this.openCreateModal());
+    }
   }
 
   // KOF-style entrance: the title + grid drop in from the top, the two side
@@ -273,7 +280,11 @@ export default class SelectScene extends Phaser.Scene {
     playUi(this, 'select');
     try {
       const { openCreateCharacterModal } = await import('../ui/CreateCharacterModal.ts');
+      const params = new URLSearchParams(globalThis.location?.search || '');
       openCreateCharacterModal({
+        // Development-only end-to-end switch: exercises the exact modal/API/
+        // asset-loading flow without invoking paid generation models.
+        mock: import.meta.env.DEV && params.get('mockCharacter') === '1',
         onComplete: async (manifest) => {
           try {
             const entry = await loadGeneratedCharacter(this, manifest);
@@ -450,15 +461,16 @@ export default class SelectScene extends Phaser.Scene {
     }
 
     const char = getCharacter(key);
-    if (!char || !this.textures.exists(char.portrait)) {
+    const figureTexture = char?.figure || char?.portrait;
+    if (!char || !figureTexture || !this.textures.exists(figureTexture)) {
       fig.figure.setVisible(false);
       fig.name.setText(char ? char.cn || char.name : '');
       return;
     }
 
     fig.figure.setVisible(true);
-    fig.figure.setTexture(char.portrait);
-    const src = this.textures.get(char.portrait).getSourceImage();
+    fig.figure.setTexture(figureTexture);
+    const src = this.textures.get(figureTexture).getSourceImage();
     const scale = Math.min(fig.boxW / src.width, fig.boxH / src.height);
     fig.figure.setScale(fig.flip ? -scale : scale, scale);
     fig.name.setText(char.cn || char.name);

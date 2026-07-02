@@ -133,6 +133,17 @@ export interface AnimationDefinition {
   offset_x?: number;
   offset_y?: number;
   scale?: number;
+  background?: AnimationLayerDefinition;
+}
+
+export interface AnimationLayerDefinition {
+  texturePrefix: string;
+  frame_cnt: number;
+  frame_rate: number;
+  playback?: 'loop' | 'forward' | 'yoyo' | 'hold';
+  fullscreen?: boolean;
+  srcW?: number;
+  srcH?: number;
 }
 
 export interface FighterLike {

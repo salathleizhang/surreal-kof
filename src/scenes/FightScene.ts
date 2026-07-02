@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { STATUS } from '../config/combat.ts';
+import { FIGHTER_STATE, STATUS } from '../config/combat.ts';
 import { getCharacter, DEFAULT_CHARACTER } from '../objects/roster.ts';
 import { getStage } from '../data/stages.ts';
 import { PIXEL_FONT, PIXEL_FONT_CN } from '../fonts.ts';
@@ -68,17 +68,40 @@ export default class FightScene extends Phaser.Scene {
     this.createHud();
     this.combatDebug = new CombatDebugOverlay(this, this.combatWorld);
 
-    // Hand off from the menu music to the fight: cut the BGM, then run the
-    // opening ceremony (announcer + "Round 1"/"Fight!" titles) before the
-    // round goes live.
+    // Hand off from the menu music to the fight. A development-only fixed-state
+    // preview makes generated animation layers inspectable without racing the
+    // live game clock (e.g. ?dev=fight&previewState=super).
     stopMenuBgm();
-    this.startIntro();
+    const params = new URLSearchParams(globalThis.location?.search || '');
+    this.devPreviewState = import.meta.env.DEV ? params.get('previewState') : null;
+    if (this.devPreviewState) this.applyDevPreviewState(this.devPreviewState);
+    else this.startIntro();
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.combatDebug.destroy();
       this.combatWorld.destroy();
       this.combatEffects.destroy();
     });
+  }
+
+  applyDevPreviewState(state) {
+    this.introActive = false;
+    const player = this.players[0];
+    if (!player) return;
+    if (state === 'jump') {
+      player.status = STATUS.JUMP;
+      player.combatState = FIGHTER_STATE.AIRBORNE;
+      player.y = player.groundY - 180;
+      this.devPreviewFrame = 12;
+    } else if (state === 'super') {
+      player.status = STATUS.IDLE;
+      player.combatState = FIGHTER_STATE.NEUTRAL;
+      player.frame_current_cnt = 0;
+      player.skillRunner.start('super');
+      this.devPreviewFrame = 20;
+    } else {
+      this.devPreviewState = null;
+    }
   }
 
   createBackground(width, height, scene) {
@@ -286,6 +309,15 @@ export default class FightScene extends Phaser.Scene {
   update(_time, delta) {
     // Guard against huge steps after a tab switch / first frame.
     const timedelta = Math.min(delta, 100);
+
+    if (this.devPreviewState) {
+      const player = this.players[0];
+      player.frame_current_cnt = this.devPreviewFrame;
+      player.render();
+      this.players[1]?.render();
+      this.updateHud();
+      return;
+    }
 
     // Opening ceremony: the fighters hold their idle pose in place — the idle
     // animation keeps playing, but input (see Player.update_control) and the

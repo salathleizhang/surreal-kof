@@ -11,7 +11,9 @@ import {
 // Only Kyo ships with art today; adding a fighter is just another entry here
 // plus its GIFs in the PreloadScene.
 export const CHARACTERS = {
-  kyo: { name: 'KYO KUSANAGI', cn: '草薙京', cls: Kyo, portrait: 'kyo-0-0' },
+  kyo: {
+    name: 'KYO KUSANAGI', cn: '草薙京', cls: Kyo, portrait: 'kyo-0-0', figure: 'kyo-0-0',
+  },
 };
 
 // The grid shown on the MEMBER SELECT screen, laid out row by row. Every cell
@@ -37,7 +39,12 @@ export function getCharacter(key) {
   const g = getGeneratedCharacter(key);
   if (g) {
     return {
-      name: g.name, cn: g.cn, cls: GeneratedFighter, portrait: g.portrait, generated: true,
+      name: g.name,
+      cn: g.cn,
+      cls: GeneratedFighter,
+      portrait: g.portrait,
+      figure: g.figure,
+      generated: true,
     };
   }
   return null;

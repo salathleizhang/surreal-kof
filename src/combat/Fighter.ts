@@ -73,6 +73,7 @@ export default class Fighter {
   ai?: AiController;
   keys?: Record<string, Phaser.Input.Keyboard.Key>;
   sprite: Phaser.GameObjects.Image;
+  backgroundSprite: Phaser.GameObjects.Image | null;
   timedelta: number;
   flashFrames: number;
   ghostTick: number;
@@ -116,6 +117,7 @@ export default class Fighter {
     this.sprite = scene.add.image(this.x, this.y, `${this.texturePrefix}-0-0`);
     this.sprite.setOrigin(0, 0);
     this.sprite.setDepth(10);
+    this.backgroundSprite = null;
 
     this.timedelta = 0;
     this.flashFrames = 0;
@@ -336,6 +338,8 @@ export default class Fighter {
     }
 
     const animation = this.animations.get(renderState);
+    if (animation?.background) this.renderAnimationBackground(animation.background);
+    else if (this.backgroundSprite) this.backgroundSprite.setVisible(false);
     if (animation && animation.frame_cnt > 0) {
       const playback = this.playbackFor(animation);
       const key = `${this.texturePrefix}-${renderState}-${playback.frame}`;
@@ -400,6 +404,29 @@ export default class Fighter {
     this.frame_current_cnt += 1;
   }
 
+  renderAnimationBackground(background: NonNullable<AnimationDefinition['background']>): void {
+    const playback = this.playbackFor(background);
+    const key = `${background.texturePrefix}-${playback.frame}`;
+    if (!this.backgroundSprite) {
+      this.backgroundSprite = this.scene.add.image(0, 0, key).setOrigin(0, 0);
+    }
+    const stageWidth = this.scene.scale.width;
+    const stageHeight = this.scene.scale.height;
+    const cover = Math.max(
+      stageWidth / (background.srcW || stageWidth),
+      stageHeight / (background.srcH || stageHeight),
+    );
+    this.backgroundSprite
+      .setVisible(true)
+      .setTexture(key)
+      .setScale(cover, cover)
+      .setPosition(
+        (stageWidth - (background.srcW || stageWidth) * cover) / 2,
+        (stageHeight - (background.srcH || stageHeight) * cover) / 2,
+      )
+      .setDepth(5);
+  }
+
   finishOneShot(state: AnimationState): void {
     if (this.skillRunner.isActive && this.skillRunner.activeSkill?.animation === state) {
       this.skillRunner.finish();
@@ -447,6 +474,7 @@ export default class Fighter {
 
   destroy(): void {
     this.scene.combatWorld?.unregisterFighter(this);
+    if (this.backgroundSprite) this.backgroundSprite.destroy();
     this.sprite.destroy();
   }
 }

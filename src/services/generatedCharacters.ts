@@ -19,7 +19,7 @@ import type { AnimationState } from '../types/combat.ts';
 
 // Which engine FSM state each generated animation drives.
 const KEY_TO_STATE: Record<string, AnimationState> = {
-  idle: 0, walk: 1, attack1: 4, attack2: 7, super: 8, intro: 9, death: 6,
+  idle: 0, walk: 1, jump: 3, attack1: 4, attack2: 7, super: 8, intro: 9, death: 6,
 };
 
 // Game frames per sprite frame, by playback mode (≈60fps): looping idles are
@@ -109,6 +109,35 @@ export async function loadGeneratedCharacter(
     };
   }
 
+  // The generated square portrait is used only by the character-select grid;
+  // the large side figure continues to use the first full-body idle frame.
+  const portraitKey = `${id}-portrait`;
+  if (manifest.portrait) {
+    entries.push({ key: portraitKey, url: `${base}${manifest.portrait}` });
+  }
+
+  // New manifests keep the cinematic super background separate from the
+  // transparent fighter action. Old manifests with fullscreen:true on `super`
+  // remain supported by the animation loop above.
+  let superBackground;
+  const backgroundInfo = manifest.superBackground;
+  if (backgroundInfo?.frames) {
+    const texturePrefix = `${id}-super-background`;
+    for (let i = 0; i < backgroundInfo.frames; i += 1) {
+      entries.push({
+        key: `${texturePrefix}-${i}`,
+        url: `${base}${backgroundInfo.dir}/${pad4(i + 1)}.png`,
+      });
+    }
+    superBackground = {
+      texturePrefix,
+      frame_cnt: backgroundInfo.frames,
+      frame_rate: backgroundInfo.frameRate || FRAME_RATE[backgroundInfo.playback] || 5,
+      playback: backgroundInfo.playback,
+      fullscreen: backgroundInfo.fullscreen !== false,
+    };
+  }
+
   await loadImages(scene, entries);
 
   // Record each state's source frame size. Most anims share the idle (3:4) size,
@@ -120,8 +149,14 @@ export async function loadGeneratedCharacter(
       : null;
     if (tex) { animMeta[state].srcW = tex.width; animMeta[state].srcH = tex.height; }
   }
+  if (superBackground) {
+    const tex = scene.textures.exists(`${superBackground.texturePrefix}-0`)
+      ? scene.textures.get(`${superBackground.texturePrefix}-0`).getSourceImage()
+      : null;
+    if (tex) { superBackground.srcW = tex.width; superBackground.srcH = tex.height; }
+  }
 
-  // Reuse art for engine states the pipeline doesn't generate:
+  // Reuse art for engine states missing from older manifests:
   //   2 backward <- walk, 3 jump <- idle, 5 hit <- first death frame.
   const walk = animMeta[1];
   const idle = animMeta[0];
@@ -130,7 +165,7 @@ export async function loadGeneratedCharacter(
     aliasFrames(scene, id, 1, 2, walk.frame_cnt);
     animMeta[2] = { ...walk, playback: 'loop' };
   }
-  if (idle) {
+  if (idle && !animMeta[3]) {
     aliasFrames(scene, id, 0, 3, idle.frame_cnt);
     animMeta[3] = { ...idle, playback: 'loop' };
   }
@@ -145,10 +180,12 @@ export async function loadGeneratedCharacter(
     id,
     name: manifest.name || id.toUpperCase(),
     cn: manifest.cn || manifest.name || id,
-    portrait: `${id}-0-0`,
+    portrait: manifest.portrait && scene.textures.exists(portraitKey) ? portraitKey : `${id}-0-0`,
+    figure: `${id}-0-0`,
     srcW: idleSrc.width,
     srcH: idleSrc.height,
     animMeta,
+    superBackground,
     moves: manifest.moves || {},
     combat: manifest.combat || {},
   };

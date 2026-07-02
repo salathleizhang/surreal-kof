@@ -93,8 +93,13 @@ const VID_RES = '480p';
 
 // Hard technical constraints appended to every still prompt; the per-state pose
 // (above) is the only thing that varies. Magenta backdrop is what the matte keys.
+export const CHARACTER_BODY_PROPORTIONS = 'consistent six-heads-tall adult body proportions: when measured along the body, '
+  + 'the head is approximately one sixth of the character total height, with a proportionally sized torso, arms and longer legs; '
+  + 'preserve the character-specific build (slim, athletic or stocky) without changing this six-head ratio; '
+  + 'never chibi, super-deformed, childlike, big-headed, four-heads-tall or squat cartoon proportions';
 const STYLE_BASE = 'retro 16-bit pixel-art fighting game sprite in King of Fighters style, '
   + 'single full-body character shown head to toe, standing upright on both feet, '
+  + `${CHARACTER_BODY_PROPORTIONS}, `
   + 'entire body visible from the top of the head down to the shoes, both feet and both legs fully in frame, '
   + 'normal natural human body proportions, full-length wide shot, side view facing right, '
   + 'whole body fully inside the frame with clear headroom above and floor room below the feet, '
@@ -698,7 +703,9 @@ async function stageFrames(job, charDir, workDir, log) {
       await genVideo({
         image: kf.firstAbs,
         lastFrame: kf.lastAbs, // equals first frame for loops -> seamless loop
-        prompt: a.motion,
+        prompt: anim.characterReference === false
+          ? a.motion
+          : `${CHARACTER_BODY_PROPORTIONS}. Keep the character body proportions unchanged in every frame. ${a.motion}`,
         duration: anim.duration,
         dest: videoPath,
         aspect: anim.aspect, // landscape for the full-screen super

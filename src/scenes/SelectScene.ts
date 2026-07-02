@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { getCharacter, SELECT_GRID } from '../objects/roster.ts';
-import { loadGeneratedCharacter } from '../services/generatedCharacters.ts';
+import { loadGeneratedCharacter, loadGeneratedIndex } from '../services/generatedCharacters.ts';
 import { listGeneratedCharacters } from '../state/generatedCharacters.ts';
 import { PIXEL_FONT, PIXEL_FONT_CN } from '../fonts.ts';
 import { setVerticalGradient } from '../utils/text.ts';
@@ -119,6 +119,7 @@ export default class SelectScene extends Phaser.Scene {
 
     // Keep the menu theme going (no-op if it's already playing from the title).
     startMenuBgm(this);
+    this.loadGeneratedRoster();
 
     // Browser QA can enter the DOM wizard directly while still exercising the
     // real scene integration. Both flags are development-only.
@@ -200,6 +201,8 @@ export default class SelectScene extends Phaser.Scene {
   // Claim the next free cell for a generated fighter id; returns its index or -1
   // when the grid is full. Only mutates the data array — cells are painted later.
   assignSlot(id) {
+    const existing = this.cellChars.indexOf(id);
+    if (existing >= 0) return existing;
     if (this.nextSlot >= this.addIndex) return -1;
     const slot = this.nextSlot;
     this.cellChars[slot] = id;
@@ -270,6 +273,15 @@ export default class SelectScene extends Phaser.Scene {
     cell.charKey = entry.id;
     this.paintCell(cell);
     this.drawCursors();
+  }
+
+  async loadGeneratedRoster() {
+    try {
+      const entries = await loadGeneratedIndex(this);
+      entries.forEach((entry) => this.addGeneratedCharacter(entry));
+    } catch (error) {
+      console.warn('Could not load generated characters', error);
+    }
   }
 
   // Open the DOM modal that drives the generation pipeline. Disabled while one is

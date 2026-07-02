@@ -4,7 +4,6 @@ import { GAME_WIDTH, GAME_HEIGHT, SCENE_KEYS } from '../config/game.ts';
 import { PIXEL_FONT } from '../fonts.ts';
 import { loadUiSounds } from '../audio.ts';
 import { STAGES, STAGE_ORDER } from '../data/stages.ts';
-import { loadGeneratedIndex } from '../services/generatedCharacters.ts';
 import { loadDeferredScenes, registerDeferredScenes } from './sceneRegistry.ts';
 
 // Kyo has seven states, each backed by its own animated GIF:
@@ -52,15 +51,9 @@ export default class PreloadScene extends Phaser.Scene {
         animationTasks.push(registerGifTextures(this, `kyo-${i}`, `assets/player/kyo/${i}.gif`));
       }
 
-      const generatedCharactersTask = loadGeneratedIndex(this).catch((error) => {
-        console.warn('Could not load generated characters', error);
-        return [];
-      });
-
       const [animationFrameCounts, deferredScenes] = await Promise.all([
         Promise.all(animationTasks),
         loadDeferredScenes(),
-        generatedCharactersTask,
       ]);
       const [bgFrameCount, ...kyoFrameCounts] = animationFrameCounts;
 

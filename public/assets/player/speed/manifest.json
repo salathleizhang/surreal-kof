@@ -1,0 +1,76 @@
+{
+  "id": "speed",
+  "name": "SPEED",
+  "cn": "speed",
+  "summary": "高速整活型选手，用拳击和后空翻拉开节奏，大招以 siu 收尾。",
+  "base": "assets/player/speed/base.png",
+  "portrait": "assets/player/speed/idle/0001.png",
+  "anims": {
+    "idle": {
+      "engineState": 0,
+      "dir": "assets/player/speed/idle",
+      "frames": 8,
+      "playback": "loop",
+      "matte": true
+    },
+    "walk": {
+      "engineState": 1,
+      "dir": "assets/player/speed/walk",
+      "frames": 8,
+      "playback": "loop",
+      "matte": true
+    },
+    "attack1": {
+      "engineState": 4,
+      "dir": "assets/player/speed/attack1",
+      "frames": 7,
+      "playback": "yoyo",
+      "matte": true
+    },
+    "attack2": {
+      "engineState": "attack2",
+      "dir": "assets/player/speed/attack2",
+      "frames": 7,
+      "playback": "yoyo",
+      "matte": true
+    },
+    "intro": {
+      "engineState": "intro",
+      "dir": "assets/player/speed/intro",
+      "frames": 8,
+      "playback": "forward",
+      "matte": true
+    },
+    "death": {
+      "engineState": 6,
+      "dir": "assets/player/speed/death",
+      "frames": 10,
+      "playback": "hold",
+      "matte": true
+    },
+    "super": {
+      "engineState": "super",
+      "dir": "assets/player/speed/super",
+      "frames": 25,
+      "playback": "forward",
+      "matte": false,
+      "frameRate": 10,
+      "fullscreen": true
+    }
+  },
+  "moves": {
+    "attack1": {
+      "name": "拳击",
+      "damage": 18
+    },
+    "attack2": {
+      "name": "后空翻",
+      "damage": 16
+    },
+    "super": {
+      "name": "siu",
+      "damage": 40
+    }
+  },
+  "createdAt": 1782625090087
+}

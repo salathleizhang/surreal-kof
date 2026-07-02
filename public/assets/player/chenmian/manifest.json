@@ -1,0 +1,76 @@
+{
+  "id": "chenmian",
+  "name": "CHEN MIAN",
+  "cn": "陈冕",
+  "summary": "金钱主宰，撒币为攻",
+  "base": "assets/player/chenmian/base.png",
+  "portrait": "assets/player/chenmian/idle/0001.png",
+  "anims": {
+    "walk": {
+      "engineState": 1,
+      "dir": "assets/player/chenmian/walk",
+      "frames": 8,
+      "playback": "loop",
+      "matte": true
+    },
+    "idle": {
+      "engineState": 0,
+      "dir": "assets/player/chenmian/idle",
+      "frames": 8,
+      "playback": "loop",
+      "matte": true
+    },
+    "attack1": {
+      "engineState": 4,
+      "dir": "assets/player/chenmian/attack1",
+      "frames": 7,
+      "playback": "yoyo",
+      "matte": true
+    },
+    "attack2": {
+      "engineState": "attack2",
+      "dir": "assets/player/chenmian/attack2",
+      "frames": 7,
+      "playback": "yoyo",
+      "matte": true
+    },
+    "intro": {
+      "engineState": "intro",
+      "dir": "assets/player/chenmian/intro",
+      "frames": 8,
+      "playback": "forward",
+      "matte": true
+    },
+    "death": {
+      "engineState": 6,
+      "dir": "assets/player/chenmian/death",
+      "frames": 10,
+      "playback": "hold",
+      "matte": true
+    },
+    "super": {
+      "engineState": "super",
+      "dir": "assets/player/chenmian/super",
+      "frames": 25,
+      "playback": "forward",
+      "matte": false,
+      "frameRate": 10,
+      "fullscreen": true
+    }
+  },
+  "moves": {
+    "attack1": {
+      "name": "出拳",
+      "damage": 20
+    },
+    "attack2": {
+      "name": "N+1",
+      "damage": 22
+    },
+    "super": {
+      "name": "大力出奇迹",
+      "damage": 40
+    }
+  },
+  "createdAt": 1782618214050
+}

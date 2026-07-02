@@ -5,5 +5,42 @@ dist/
 __pycache__/
 *.pyc
 
-# Player assets
-public/assets/player/
+# Player assets are generated locally by default. Keep the directory ignored,
+# then allow only the currently playable runtime roster into Git.
+public/assets/player/*
+!public/assets/player/generated-index.json
+
+# Built-in playable fighter.
+!public/assets/player/kyo/
+
+# Playable generated fighters listed in generated-index.json.
+!public/assets/player/fighter-87633c7b/
+!public/assets/player/chenmian/
+!public/assets/player/caixukun/
+!public/assets/player/fengge-wangming-tianya/
+!public/assets/player/speed/
+!public/assets/player/kobe/
+
+# Ignore generated intermediates/previews inside whitelisted fighter folders.
+public/assets/player/*/*
+
+# Runtime files for the built-in fighter.
+!public/assets/player/kyo/*.gif
+
+# Runtime files for generated fighters.
+!public/assets/player/*/manifest.json
+!public/assets/player/*/base.png
+!public/assets/player/*/idle/
+!public/assets/player/*/idle/*.png
+!public/assets/player/*/walk/
+!public/assets/player/*/walk/*.png
+!public/assets/player/*/attack1/
+!public/assets/player/*/attack1/*.png
+!public/assets/player/*/attack2/
+!public/assets/player/*/attack2/*.png
+!public/assets/player/*/intro/
+!public/assets/player/*/intro/*.png
+!public/assets/player/*/death/
+!public/assets/player/*/death/*.png
+!public/assets/player/*/super/
+!public/assets/player/*/super/*.png

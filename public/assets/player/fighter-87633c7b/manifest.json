@@ -1,0 +1,74 @@
+{
+  "id": "fighter-87633c7b",
+  "name": "老罗",
+  "cn": "老罗",
+  "summary": "",
+  "base": "assets/player/fighter-87633c7b/base.png",
+  "portrait": "assets/player/fighter-87633c7b/idle/0001.png",
+  "anims": {
+    "walk": {
+      "engineState": 1,
+      "dir": "assets/player/fighter-87633c7b/walk",
+      "frames": 8,
+      "playback": "loop",
+      "matte": true
+    },
+    "idle": {
+      "engineState": 0,
+      "dir": "assets/player/fighter-87633c7b/idle",
+      "frames": 8,
+      "playback": "loop",
+      "matte": true
+    },
+    "attack1": {
+      "engineState": 4,
+      "dir": "assets/player/fighter-87633c7b/attack1",
+      "frames": 7,
+      "playback": "yoyo",
+      "matte": true
+    },
+    "attack2": {
+      "engineState": "attack2",
+      "dir": "assets/player/fighter-87633c7b/attack2",
+      "frames": 7,
+      "playback": "yoyo",
+      "matte": true
+    },
+    "intro": {
+      "engineState": "intro",
+      "dir": "assets/player/fighter-87633c7b/intro",
+      "frames": 8,
+      "playback": "forward",
+      "matte": true
+    },
+    "death": {
+      "engineState": 6,
+      "dir": "assets/player/fighter-87633c7b/death",
+      "frames": 10,
+      "playback": "hold",
+      "matte": true
+    },
+    "super": {
+      "engineState": "super",
+      "dir": "assets/player/fighter-87633c7b/super",
+      "frames": 14,
+      "playback": "forward",
+      "matte": false
+    }
+  },
+  "moves": {
+    "attack1": {
+      "name": "疾风直拳",
+      "damage": 20
+    },
+    "attack2": {
+      "name": "旋风踢",
+      "damage": 24
+    },
+    "super": {
+      "name": "终极爆炎波",
+      "damage": 40
+    }
+  },
+  "createdAt": 1782610703873
+}

@@ -1,0 +1,76 @@
+{
+  "id": "caixukun",
+  "name": "CAI XUKUN",
+  "cn": "蔡徐坤",
+  "summary": "ikun 唱跳rap篮球，全能舞担",
+  "base": "assets/player/caixukun/base.png",
+  "portrait": "assets/player/caixukun/idle/0001.png",
+  "anims": {
+    "walk": {
+      "engineState": 1,
+      "dir": "assets/player/caixukun/walk",
+      "frames": 8,
+      "playback": "loop",
+      "matte": true
+    },
+    "attack2": {
+      "engineState": "attack2",
+      "dir": "assets/player/caixukun/attack2",
+      "frames": 7,
+      "playback": "yoyo",
+      "matte": true
+    },
+    "attack1": {
+      "engineState": 4,
+      "dir": "assets/player/caixukun/attack1",
+      "frames": 7,
+      "playback": "yoyo",
+      "matte": true
+    },
+    "idle": {
+      "engineState": 0,
+      "dir": "assets/player/caixukun/idle",
+      "frames": 8,
+      "playback": "loop",
+      "matte": true
+    },
+    "death": {
+      "engineState": 6,
+      "dir": "assets/player/caixukun/death",
+      "frames": 10,
+      "playback": "hold",
+      "matte": true
+    },
+    "intro": {
+      "engineState": "intro",
+      "dir": "assets/player/caixukun/intro",
+      "frames": 8,
+      "playback": "forward",
+      "matte": true
+    },
+    "super": {
+      "engineState": "super",
+      "dir": "assets/player/caixukun/super",
+      "frames": 25,
+      "playback": "forward",
+      "matte": false,
+      "frameRate": 10,
+      "fullscreen": true
+    }
+  },
+  "moves": {
+    "attack1": {
+      "name": "铁山靠",
+      "damage": 22
+    },
+    "attack2": {
+      "name": "擦玻璃",
+      "damage": 18
+    },
+    "super": {
+      "name": "你干嘛·打篮球",
+      "damage": 40
+    }
+  },
+  "createdAt": 1782622258019
+}

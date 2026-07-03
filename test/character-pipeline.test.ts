@@ -18,7 +18,7 @@ async function waitForSettled(
   throw new Error(`Timed out waiting for job ${id}`);
 }
 
-test('mock character pipeline emits portrait, jump and split super assets', async () => {
+test('mock pipeline emits guard, idle-anchored jump and split super assets', async () => {
   const playerDir = await mkdtemp(join(tmpdir(), 'kof-pipeline-'));
   process.env.KOF_GENERATED_PLAYER_DIR = playerDir;
 
@@ -36,6 +36,10 @@ test('mock character pipeline emits portrait, jump and split super assets', asyn
     assert.equal(job.status, 'awaiting');
     assert.ok(job.keyframes.portrait);
     assert.ok(job.keyframes.jump);
+    assert.equal(job.keyframes.jump.first, job.keyframes.jump.last);
+    assert.equal(job.keyframes.jump.generated, false);
+    assert.ok(job.keyframes.guard);
+    assert.notEqual(job.keyframes.guard.first, job.keyframes.guard.last);
     assert.ok(job.keyframes.super);
     assert.ok(job.keyframes.superBackground);
 
@@ -44,6 +48,8 @@ test('mock character pipeline emits portrait, jump and split super assets', asyn
     assert.equal(job.status, 'done');
     assert.equal(job.manifest.portrait, `assets/player/${job.charId}/portrait.png`);
     assert.equal(job.manifest.anims.jump.engineState, 3);
+    assert.equal(job.manifest.anims.guard.engineState, 10);
+    assert.equal(job.manifest.anims.guard.playback, 'hold');
     assert.equal(job.manifest.anims.super.matte, true);
     assert.equal(job.manifest.anims.super.fullscreen, undefined);
     assert.equal(job.manifest.superBackground.matte, false);
@@ -52,6 +58,7 @@ test('mock character pipeline emits portrait, jump and split super assets', asyn
     const manifest = JSON.parse(await readFile(join(playerDir, job.charId, 'manifest.json'), 'utf8'));
     assert.deepEqual(manifest.superBackground, job.manifest.superBackground);
     assert.equal((await readdir(join(playerDir, job.charId, 'jump'))).length, 8);
+    assert.equal((await readdir(join(playerDir, job.charId, 'guard'))).length, 8);
     assert.equal((await readdir(join(playerDir, job.charId, 'super'))).length, 25);
     assert.equal((await readdir(join(playerDir, job.charId, 'super-background'))).length, 25);
   } finally {

@@ -50,7 +50,9 @@ export default class SkillRunner {
   tryStartFromInput(input: Record<string, boolean>): boolean {
     if (this.current || !this.fighter.canStartSkill()) return false;
     const skill = this.inputSkills.find(
-      (candidate) => input[candidate.input] && this.fighter.hasAnimation(candidate.animation),
+      (candidate) => input[candidate.input]
+        && this.fighter.hasAnimation(candidate.animation)
+        && this.fighter.canUseSkill?.(candidate) !== false,
     );
     return skill ? this.start(skill.id) : false;
   }
@@ -59,6 +61,7 @@ export default class SkillRunner {
     const skill = this.getSkill(id);
     if (!skill || this.current || !this.fighter.canStartSkill()) return false;
     if (!this.fighter.hasAnimation(skill.animation)) return false;
+    if (this.fighter.canUseSkill?.(skill) === false) return false;
 
     this.current = {
       skill,

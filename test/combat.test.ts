@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import CollisionWorld from '../src/combat/CollisionWorld.ts';
 import SkillRunner from '../src/combat/SkillRunner.ts';
 import { intersectsAabb, localBoxToWorld } from '../src/combat/collision/geometry.ts';
+import { isGuardInput, resolveDamage } from '../src/combat/guard.ts';
 import { createGeneratedCombatDefinition } from '../src/characters/generated/createCombatDefinition.ts';
 
 test('local boxes mirror around fighters without changing authored dimensions', () => {
@@ -25,14 +26,30 @@ test('AABB overlap excludes boxes that only touch at an edge', () => {
   assert.equal(intersectsAabb(a, { x: 20, y: 0, width: 10, height: 10 }), false);
 });
 
+test('guard requires down plus the direction away from the opponent', () => {
+  assert.equal(isGuardInput({ down: true, left: true }, 1), true);
+  assert.equal(isGuardInput({ down: true, right: true }, 1), false);
+  assert.equal(isGuardInput({ down: true, right: true }, -1), true);
+  assert.equal(isGuardInput({ down: false, left: true }, 1), false);
+});
+
+test('guarded hits deal no damage, including all-damage hits', () => {
+  assert.equal(resolveDamage(20, 100, true), 0);
+  assert.equal(resolveDamage('all', 100, true), 0);
+  assert.equal(resolveDamage(20, 100, false), 20);
+  assert.equal(resolveDamage('all', 73, false), 73);
+});
+
 test('collision world resolves a skill-owned hitbox against target hurtboxes', () => {
   const hits = [];
+  let rage = 0;
   const scene = { scale: { width: 1280 } };
   const effects = { emit() {} };
   const world = new CollisionWorld(scene, effects as any);
   const owner = {
     id: 0, x: 100, y: 100, width: 80, height: 160, direction: 1,
     isDead: () => false,
+    gainRage: (amount = 25) => { rage += amount; },
   };
   const target = {
     id: 1,
@@ -53,12 +70,48 @@ test('collision world resolves a skill-owned hitbox against target hurtboxes', (
   assert.equal(hits.length, 1);
   assert.equal(hits[0].damage, 17);
   assert.equal(hits[0].attacker, owner);
+  assert.equal(rage, 25);
   assert.equal(world.activeHitboxes.length, 1);
   assert.deepEqual(world.activeHitboxes[0].box, {
     x: 180, y: 120, width: 50, height: 30,
   });
   world.beginFrame();
   assert.equal(world.activeHitboxes.length, 0);
+});
+
+test('rage-gated skills only start when full and consume their cost', () => {
+  const fighter = {
+    status: 0,
+    frame_current_cnt: 0,
+    rage: 149,
+    maxRage: 150,
+    isDead: () => false,
+    canStartSkill: () => true,
+    canUseSkill(skill) {
+      return skill.rageCost === 'all'
+        ? this.rage >= this.maxRage
+        : this.rage >= (skill.rageCost || 0);
+    },
+    hasAnimation: () => true,
+    animationApex: () => 3,
+    animationDuration: () => 9,
+    beginSkill(skill) {
+      this.rage -= skill.rageCost === 'all' ? this.maxRage : (skill.rageCost || 0);
+      this.status = skill.animation;
+    },
+    scene: { combatEffects: { emit() {} } },
+  };
+  const runner = new SkillRunner(fighter as any, {
+    super: {
+      id: 'super', input: 'special', animation: 8, rageCost: 'all',
+    },
+  });
+
+  assert.equal(runner.tryStartFromInput({ special: true }), false);
+  assert.equal(fighter.rage, 149);
+  fighter.rage = 150;
+  assert.equal(runner.tryStartFromInput({ special: true }), true);
+  assert.equal(fighter.rage, 0);
 });
 
 test('skill runner fires multiple same-frame events exactly once', () => {

@@ -5,13 +5,13 @@ const NORMAL = {
   reactionMs: 420, // how often the AI re-evaluates the situation (higher = slower reflexes)
   attackCooldownMs: 900, // minimum gap between attack attempts (anti-spam)
   aggression: 0.4, // chance to swing when the opponent is in range
-  defense: 0.4, // chance to evade an attack it has read
+  defense: 0.4, // chance to guard or evade an attack it has read
   jumpInChance: 0.1, // chance to hop in while closing distance
   spacingChance: 0.35, // chance to step back in range to bait a whiff
 };
 
 // Drives a Player the way a second human would: instead of reading the keyboard,
-// the Player asks this controller for a {up,left,right,attack} input each frame.
+// the Player asks this controller for directional/action input each frame.
 export default class AiController {
   player: Fighter;
   scene: any;
@@ -26,7 +26,7 @@ export default class AiController {
     this.cfg = profile;
 
     this.input = {
-      up: false, left: false, right: false, attack: false, attack2: false, special: false,
+      up: false, down: false, left: false, right: false, attack: false, attack2: false, special: false,
     };
     this.sinceDecision = profile.reactionMs; // decide on the very first frame
     this.sinceAttack = profile.attackCooldownMs;
@@ -80,6 +80,7 @@ export default class AiController {
 
     // Fresh inputs each decision; movement is re-asserted below as needed.
     this.input.up = false;
+    this.input.down = false;
     this.input.attack = false;
     this.input.attack2 = false;
     this.input.special = false;
@@ -96,16 +97,22 @@ export default class AiController {
     const r = Math.random;
 
     // Read the opponent's swing: if they're attacking and we're inside their
-    // range, hop/step back out of the way most of the time.
+    // range, usually crouch-back to guard; occasionally hop/step back instead.
     if (opp.skillRunner.isActive && gap < attackRange + 40 && r() < this.cfg.defense) {
       this.setMove(false, oppOnRight);
-      if (r() < 0.4) this.input.up = true; // jump back
+      if (r() < 0.65) this.input.down = true;
+      else if (r() < 0.4) this.input.up = true; // jump back
       return;
     }
 
     if (gap <= attackRange) {
       if (this.sinceAttack >= this.cfg.attackCooldownMs && r() < this.cfg.aggression) {
-        this.input.attack = true;
+        const superSkill = me.skillRunner.getSkillByInput('special');
+        if (superSkill && me.canUseSkill(superSkill) && me.isRageFull()) {
+          this.input.special = true;
+        } else {
+          this.input.attack = true;
+        }
         this.sinceAttack = 0;
       } else if (r() < this.cfg.spacingChance) {
         this.setMove(false, oppOnRight); // back off to reset spacing / bait
@@ -138,6 +145,7 @@ interface AiProfile {
 
 export interface FighterInput {
   up: boolean;
+  down: boolean;
   left: boolean;
   right: boolean;
   attack: boolean;

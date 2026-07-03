@@ -22,9 +22,12 @@ A horizontal fighting game built with the **Phaser 3** game engine and JavaScrip
   | Character Movements | Player 1 |  Player 2  |
   | :-----------------: | :------: | :--------: |
   |        Jump         |    w     |  ArrowUp   |
+  | Defense (down + back) | s + away | ArrowDown + away |
   |      Go Right       |    d     | ArrowRight |
   |       Go Left       |    a     | ArrowLeft  |
-  |    Throw a Punch    |  Space   |   Enter    |
+  |    Throw a Punch    |    g     |   Comma    |
+  |        Kick         |    h     |   Period   |
+  |        Super        |    j     | ForwardSlash |
 - **Beat** your opponent before the countdown ends.
 
 ## About the project
@@ -52,7 +55,8 @@ A horizontal fighting game built with the **Phaser 3** game engine and JavaScrip
 - A finite-state machine with a state collection, state transitions and a current
   state variable. Together with character variables (initial position, direction,
   speed, gravity, etc.) it gives the character seven smooth animations.
-- 0: idle, 1: forward, 2: backward, 3: jump, 4: attack, 5: be hit, 6: death
+- 0: idle, 1: forward, 2: backward, 3: jump, 4: attack, 5: be hit,
+  6: death, 10: guard (generated fighters)
 
 ### UI sound effects
 

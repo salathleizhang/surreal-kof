@@ -2,10 +2,13 @@ import Phaser from 'phaser';
 import AiController from '../objects/AiController.ts';
 import SkillRunner from './SkillRunner.ts';
 import { localBoxToWorld } from './collision/geometry.ts';
+import { isGuardInput, resolveDamage } from './guard.ts';
 import {
   playHit, playHurtVoice, playDeathVoice,
 } from '../audio.ts';
-import { CHARACTER_SCALE, FIGHTER_STATE, STATUS } from '../config/combat.ts';
+import {
+  CHARACTER_SCALE, DEFAULT_MAX_RAGE, DEFAULT_RAGE_GAIN_PER_HIT, FIGHTER_STATE, STATUS,
+} from '../config/combat.ts';
 import type {
   AnimationDefinition, AnimationState, Box, CombatDefinition, FighterBody,
   FighterStats, HitData, SkillDefinition,
@@ -26,11 +29,11 @@ const { KeyCodes } = Phaser.Input.Keyboard;
 
 const KEY_LAYOUTS = [
   {
-    up: KeyCodes.W, left: KeyCodes.A, right: KeyCodes.D, attack: KeyCodes.G,
+    up: KeyCodes.W, down: KeyCodes.S, left: KeyCodes.A, right: KeyCodes.D, attack: KeyCodes.G,
     attack2: KeyCodes.H, special: KeyCodes.J,
   },
   {
-    up: KeyCodes.UP, left: KeyCodes.LEFT, right: KeyCodes.RIGHT, attack: KeyCodes.COMMA,
+    up: KeyCodes.UP, down: KeyCodes.DOWN, left: KeyCodes.LEFT, right: KeyCodes.RIGHT, attack: KeyCodes.COMMA,
     attack2: KeyCodes.PERIOD, special: KeyCodes.FORWARD_SLASH,
   },
 ];
@@ -69,6 +72,8 @@ export default class Fighter {
   hp: number;
   hpGreen: number;
   hpRed: number;
+  maxRage: number;
+  rage: number;
   isAi: boolean;
   ai?: AiController;
   keys?: Record<string, Phaser.Input.Keyboard.Key>;
@@ -109,6 +114,8 @@ export default class Fighter {
     this.hp = this.maxHp;
     this.hpGreen = this.maxHp;
     this.hpRed = this.maxHp;
+    this.maxRage = this.stats.maxRage ?? DEFAULT_MAX_RAGE;
+    this.rage = 0;
 
     this.isAi = !!info.ai;
     if (this.isAi) this.ai = new AiController(this);
@@ -138,10 +145,11 @@ export default class Fighter {
   readInput(): Record<string, boolean> {
     if (this.isAi) return { attack2: false, special: false, ...this.ai!.getInput() };
     const {
-      up, left, right, attack, attack2, special,
+      up, down, left, right, attack, attack2, special,
     } = this.keys!;
     return {
       up: up.isDown,
+      down: down.isDown,
       left: left.isDown,
       right: right.isDown,
       attack: attack.isDown,
@@ -157,6 +165,28 @@ export default class Fighter {
     // this state must come from authored knockback, not character controls.
     if (this.combatState === FIGHTER_STATE.HITSTUN) return;
     const input = this.readInput();
+
+    // Crouch-back is guard: down plus the direction away from the opponent.
+    // Guard owns the fighter for as long as the chord is held, then releases
+    // immediately back to neutral so movement or an attack can start.
+    const wantsGuard = isGuardInput(input, this.direction);
+    if (this.combatState === FIGHTER_STATE.GUARDING) {
+      if (wantsGuard) {
+        this.vx = 0;
+        return;
+      }
+      this.status = STATUS.IDLE;
+      this.combatState = FIGHTER_STATE.NEUTRAL;
+      this.frame_current_cnt = 0;
+    }
+    if (wantsGuard && this.canStartSkill()) {
+      this.status = STATUS.GUARD;
+      this.combatState = FIGHTER_STATE.GUARDING;
+      this.frame_current_cnt = 0;
+      this.vx = 0;
+      return;
+    }
+
     if (this.skillRunner.tryStartFromInput(input)) return;
     if (!this.canStartSkill()) return;
 
@@ -186,7 +216,22 @@ export default class Fighter {
       && (this.status === STATUS.IDLE || this.status === STATUS.MOVE);
   }
 
+  canUseSkill(skill: SkillDefinition): boolean {
+    if (skill.rageCost === 'all') return this.isRageFull();
+    return this.rage >= (skill.rageCost || 0);
+  }
+
+  gainRage(amount = this.stats.rageGainPerHit ?? DEFAULT_RAGE_GAIN_PER_HIT): void {
+    this.rage = Phaser.Math.Clamp(this.rage + Math.max(0, amount), 0, this.maxRage);
+  }
+
+  isRageFull(): boolean {
+    return this.rage >= this.maxRage;
+  }
+
   beginSkill(skill: SkillDefinition): void {
+    const rageCost = skill.rageCost === 'all' ? this.maxRage : (skill.rageCost || 0);
+    this.rage = Math.max(0, this.rage - rageCost);
     this.status = skill.animation;
     this.combatState = FIGHTER_STATE.ATTACKING;
     this.frame_current_cnt = 0;
@@ -293,10 +338,20 @@ export default class Fighter {
 
   receiveHit(hit: HitData = {}): void {
     if (this.isDead()) return;
+    const guarding = this.combatState === FIGHTER_STATE.GUARDING && this.status === STATUS.GUARD;
+    const damage = resolveDamage(hit.damage, this.hp, guarding);
+    if (guarding) {
+      // A held guard absorbs the hit without damage, hitstun, knockback or a
+      // hurt voice. Short hitstop/flash still gives the attacker clear contact
+      // feedback while the guard pose remains in control.
+      this.vx = 0;
+      this.flashFrames = 2;
+      this.sprite.setTintFill(0xffffff);
+      this.scene.startHitstop(hit.hitstop ?? 3);
+      playHit(this.scene);
+      return;
+    }
     this.skillRunner.cancel();
-    const damage = hit.damage === 'all'
-      ? this.hp
-      : Math.max(0, Number(hit.damage ?? 20));
 
     this.status = STATUS.HIT;
     this.combatState = FIGHTER_STATE.HITSTUN;
@@ -344,6 +399,11 @@ export default class Fighter {
       renderState = STATUS.BACKWARD;
     }
 
+    // Legacy fighters/manifests have no authored guard animation. They still
+    // get functional defense and render their idle art as a graceful fallback.
+    if (renderState === STATUS.GUARD && !this.animations.has(renderState)) {
+      renderState = STATUS.IDLE;
+    }
     const animation = this.animations.get(renderState);
     if (animation?.background) this.renderAnimationBackground(animation.background);
     else if (this.backgroundSprite) this.backgroundSprite.setVisible(false);

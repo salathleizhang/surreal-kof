@@ -66,6 +66,7 @@ export default class CollisionWorld {
 
   applyHit(owner: FighterLike, target: FighterLike, hit: HitData, contactBox: Box): void {
     target.receiveHit({ ...hit, attacker: owner });
+    owner.gainRage?.(hit.rageGain);
     const x = contactBox.x + contactBox.width / 2;
     const y = contactBox.y + contactBox.height / 2;
     this.effects?.emit(hit.effect || 'hit-spark', {

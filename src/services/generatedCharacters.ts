@@ -24,7 +24,7 @@ interface LoadProgress {
 
 // Which engine FSM state each generated animation drives.
 const KEY_TO_STATE: Record<string, AnimationState> = {
-  idle: 0, walk: 1, jump: 3, attack1: 4, attack2: 7, super: 8, intro: 9, death: 6,
+  idle: 0, walk: 1, jump: 3, attack1: 4, attack2: 7, super: 8, intro: 9, guard: 10, death: 6,
 };
 
 // Game frames per sprite frame, by playback mode (≈60fps): looping idles are
@@ -179,7 +179,8 @@ export async function loadGeneratedCharacter(
   }
 
   // Reuse art for engine states missing from older manifests:
-  //   2 backward <- walk, 3 jump <- idle, 5 hit <- first death frame.
+  //   2 backward <- walk, 3 jump <- idle, 5 hit <- first death frame,
+  //   10 guard <- idle. The last fallback keeps old generated fighters usable.
   const walk = animMeta[1];
   const idle = animMeta[0];
   const death = animMeta[6];
@@ -190,6 +191,10 @@ export async function loadGeneratedCharacter(
   if (idle && !animMeta[3]) {
     aliasFrames(scene, id, 0, 3, idle.frame_cnt);
     animMeta[3] = { ...idle, playback: 'loop' };
+  }
+  if (idle && !animMeta[10]) {
+    aliasFrames(scene, id, 0, 10, idle.frame_cnt);
+    animMeta[10] = { ...idle, playback: 'hold' };
   }
   if (death) {
     aliasFrames(scene, id, 6, 5, 1); // single recoil frame

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { FIGHTER_STATE, STATUS } from '../config/combat.ts';
+import { DEFAULT_RAGE_GAIN_PER_HIT, FIGHTER_STATE, STATUS } from '../config/combat.ts';
 import { getCharacter, DEFAULT_CHARACTER } from '../objects/roster.ts';
 import { getStage } from '../data/stages.ts';
 import { PIXEL_FONT, PIXEL_FONT_CN } from '../fonts.ts';
@@ -20,6 +20,9 @@ const BAR_HEIGHT = 40;
 const BAR_MARGIN = 20;
 const TIMER_WIDTH = 80;
 const BORDER = 5;
+const RAGE_BAR_Y = BAR_Y + BAR_HEIGHT + 8;
+const RAGE_BAR_HEIGHT = 16;
+const RAGE_BORDER = 3;
 
 export default class FightScene extends Phaser.Scene {
   // Runtime combat/UI handles are attached during create().
@@ -97,8 +100,12 @@ export default class FightScene extends Phaser.Scene {
       player.status = STATUS.IDLE;
       player.combatState = FIGHTER_STATE.NEUTRAL;
       player.frame_current_cnt = 0;
+      player.rage = player.maxRage;
       player.skillRunner.start('super');
       this.devPreviewFrame = 20;
+    } else if (state === 'rage') {
+      player.rage = player.maxRage;
+      this.devPreviewFrame = 0;
     } else {
       this.devPreviewState = null;
     }
@@ -272,6 +279,19 @@ export default class FightScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(21);
 
+    this.rageTexts = this.barLayout.map((bar) => this.add
+      .text(bar.x + bar.width / 2, RAGE_BAR_Y + RAGE_BAR_HEIGHT / 2, '', {
+        fontFamily: PIXEL_FONT_CN,
+        fontSize: '11px',
+        fontStyle: 'bold',
+        color: '#ffffff',
+        stroke: '#000000',
+        strokeThickness: 3,
+        align: 'center',
+      })
+      .setOrigin(0.5)
+      .setDepth(21));
+
     this.updateHud();
   }
 
@@ -290,6 +310,12 @@ export default class FightScene extends Phaser.Scene {
 
       this.drawHpLayer(bar, player.hpRed, player.maxHp, 0xff0000);
       this.drawHpLayer(bar, player.hpGreen, player.maxHp, 0x90ee90);
+      this.drawRageBar(bar, player);
+
+      const full = player.rage >= player.maxRage;
+      this.rageTexts[i]
+        .setText(`怒气 ${Math.floor(player.rage)} / ${player.maxRage}`)
+        .setColor(full ? '#fff36a' : '#ffffff');
     });
 
     this.timerText.setText(`${Math.floor(this.timeLeft / 1000)}`);
@@ -304,6 +330,38 @@ export default class FightScene extends Phaser.Scene {
 
     this.hudGfx.fillStyle(color, 1);
     this.hudGfx.fillRect(x, y, w, h);
+  }
+
+  drawRageBar(bar, player) {
+    const g = this.hudGfx;
+    g.lineStyle(RAGE_BORDER, 0xffffff, 1);
+    g.fillStyle(0x180703, 0.95);
+    g.fillRect(bar.x, RAGE_BAR_Y, bar.width, RAGE_BAR_HEIGHT);
+    g.strokeRect(bar.x, RAGE_BAR_Y, bar.width, RAGE_BAR_HEIGHT);
+
+    const inner = bar.width - RAGE_BORDER * 2;
+    const ratio = Phaser.Math.Clamp(player.rage / player.maxRage, 0, 1);
+    const w = inner * ratio;
+    const x = bar.anchorRight
+      ? bar.x + bar.width - RAGE_BORDER - w
+      : bar.x + RAGE_BORDER;
+    g.fillStyle(ratio >= 1 ? 0xffe34f : 0xff7a00, 1);
+    g.fillRect(x, RAGE_BAR_Y + RAGE_BORDER, w, RAGE_BAR_HEIGHT - RAGE_BORDER * 2);
+
+    g.lineStyle(1, 0x522000, 0.9);
+    const segmentCount = Math.max(
+      1,
+      Math.ceil(player.maxRage / (player.stats.rageGainPerHit ?? DEFAULT_RAGE_GAIN_PER_HIT)),
+    );
+    for (let segment = 1; segment < segmentCount; segment += 1) {
+      const segmentX = bar.x + RAGE_BORDER + (inner * segment) / segmentCount;
+      g.lineBetween(
+        segmentX,
+        RAGE_BAR_Y + RAGE_BORDER,
+        segmentX,
+        RAGE_BAR_Y + RAGE_BAR_HEIGHT - RAGE_BORDER,
+      );
+    }
   }
 
   update(_time, delta) {

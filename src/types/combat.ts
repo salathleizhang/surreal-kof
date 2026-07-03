@@ -21,6 +21,7 @@ export interface HitData {
   hitstop?: number;
   effect?: string;
   knockback?: Knockback;
+  rageGain?: number;
   attacker?: FighterLike;
 }
 
@@ -89,6 +90,7 @@ export interface SkillDefinition {
   id: string;
   input?: SkillInputName;
   priority?: number;
+  rageCost?: number | 'all';
   animation: AnimationState;
   name?: string;
   stopOnStart?: boolean;
@@ -104,6 +106,8 @@ export interface SkillDefinition {
 
 export interface FighterStats {
   maxHp?: number;
+  maxRage?: number;
+  rageGainPerHit?: number;
   moveSpeed?: number;
   jumpSpeed?: number;
   gravity?: number;
@@ -160,6 +164,8 @@ export interface FighterLike {
   scene: any;
   isDead(): boolean;
   canStartSkill(): boolean;
+  canUseSkill?(skill: SkillDefinition): boolean;
+  gainRage?(amount?: number): void;
   hasAnimation(state: AnimationState): boolean;
   beginSkill(skill: SkillDefinition): void;
   animationApex(state: AnimationState): number;

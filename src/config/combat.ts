@@ -10,6 +10,7 @@ export const STATUS = Object.freeze({
   ATTACK2: 7,
   SUPER: 8,
   INTRO: 9,
+  GUARD: 10,
 });
 
 // High-level combat state. Animation states above remain numeric because they
@@ -19,9 +20,13 @@ export const FIGHTER_STATE = Object.freeze({
   NEUTRAL: 'neutral',
   AIRBORNE: 'airborne',
   ATTACKING: 'attacking',
+  GUARDING: 'guarding',
   HITSTUN: 'hitstun',
   DEAD: 'dead',
 });
+
+export const DEFAULT_MAX_RAGE = 100;
+export const DEFAULT_RAGE_GAIN_PER_HIT = 25;
 
 // Scales fighter art, hitboxes, reach and floor placement as one unit.
 export const CHARACTER_SCALE = 1.6;

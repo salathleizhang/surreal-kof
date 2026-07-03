@@ -1,4 +1,6 @@
-import { CHARACTER_SCALE, STATUS } from '../../config/combat.ts';
+import {
+  CHARACTER_SCALE, DEFAULT_MAX_RAGE, DEFAULT_RAGE_GAIN_PER_HIT, STATUS,
+} from '../../config/combat.ts';
 import type { CombatDefinition } from '../../types/combat.ts';
 
 const S = CHARACTER_SCALE;
@@ -8,6 +10,8 @@ const BODY_HEIGHT = 200 * S;
 export const KYO_COMBAT = Object.freeze<CombatDefinition>({
   stats: {
     maxHp: 100,
+    maxRage: DEFAULT_MAX_RAGE,
+    rageGainPerHit: DEFAULT_RAGE_GAIN_PER_HIT,
     moveSpeed: 400,
     jumpSpeed: -1000,
     gravity: 50,

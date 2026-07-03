@@ -27,9 +27,9 @@ const PUBLIC_DIR = join(__dirname, '..', 'public');
 // real roster; production keeps writing to Vite's public asset tree.
 const PLAYER_DIR = process.env.KOF_GENERATED_PLAYER_DIR || join(PUBLIC_DIR, 'assets', 'player');
 
-// The eight generated fighter animations. `engineState` maps each onto the fighter FSM
-// (0 idle, 1 walk, 4 attack, 6 death) or a named extra state (intro/attack2/
-// super). `frames` is how many sprites we keep — longer actions keep more.
+// The nine generated fighter animations. `engineState` maps each onto the fighter FSM
+// (0 idle, 1 walk, 3 jump, 4 attack, 6 death, 10 guard) or a named extra state
+// (intro/attack2/super). `frames` is how many sprites we keep — longer actions keep more.
 // `playback`: loop | forward | yoyo (out-and-back retract) | hold (freeze last).
 //
 // attack1 = a PUNCH (技能1 出拳), attack2 = a KICK (技能2 踢腿) — two distinct
@@ -44,8 +44,8 @@ const PLAYER_DIR = process.env.KOF_GENERATED_PLAYER_DIR || join(PUBLIC_DIR, 'ass
 //   'base' — reuse the base sprite as this frame (the pose is just idle)
 //   'gen'  — generate this frame from the base + the pose prompt
 //   'same' — reuse this anim's start frame (start == end, e.g. a seamless loop)
-// So idle needs 0 new frames (base↔base), attack/intro/death need 1 (base→end),
-// and walk/super need 1 (one pose used as both ends).
+// So idle/jump need 0 new frames (base↔base), guard/attack/intro/death need 1
+// (base→end), and walk/super need 1 (one pose used as both ends).
 export const ANIMS = [
   {
     key: 'idle', engineState: 0, duration: 4, frames: 8, playback: 'loop', matte: true, startKf: 'base', endKf: 'base',
@@ -54,7 +54,10 @@ export const ANIMS = [
     key: 'walk', engineState: 1, duration: 4, frames: 8, playback: 'loop', matte: true, startKf: 'gen', endKf: 'same',
   },
   {
-    key: 'jump', engineState: 3, duration: 4, frames: 8, playback: 'forward', matte: true, startKf: 'base', endKf: 'gen',
+    key: 'jump', engineState: 3, duration: 4, frames: 8, playback: 'forward', matte: true, startKf: 'base', endKf: 'base',
+  },
+  {
+    key: 'guard', engineState: 10, duration: 4, frames: 8, playback: 'hold', matte: true, startKf: 'base', endKf: 'gen',
   },
   {
     key: 'attack1', engineState: 4, duration: 4, frames: 7, playback: 'yoyo', matte: true, startKf: 'base', endKf: 'gen',
@@ -143,7 +146,8 @@ function fixedProfile(name) {
   const anims = {
     idle: { startPose: 'relaxed ready fighting idle stance', endPose: 'relaxed ready fighting idle stance', motion: 'subtle idle breathing, standing ready in a fighting stance' },
     walk: { startPose: 'walking forward in a fighting game', endPose: 'walking forward in a fighting game', motion: 'walking forward in a steady seamless loop' },
-    jump: { startPose: 'ready fighting stance before jumping', endPose: 'airborne at the apex of a vertical fighting-game jump, knees bent and whole body visible', motion: 'jumps vertically into the air in a quick athletic fighting-game jump, keeping the whole body visible' },
+    jump: { startPose: 'relaxed ready fighting idle stance', endPose: 'relaxed ready fighting idle stance', motion: 'jumps vertically into the air in a quick athletic fighting-game jump, then lands back in the exact same ready idle stance; keep the whole body visible throughout' },
+    guard: { startPose: 'relaxed ready fighting idle stance', endPose: 'low defensive crouch-block stance, knees bent with both forearms raised firmly to shield the head and torso from an incoming attack', motion: 'quickly shifts from the standing ready stance into a compact crouching defensive guard, raises both forearms to block, and holds the final guard pose' },
     // 技能1 = 出拳 (punch): an arm/fist strike.
     attack1: { startPose: 'ready fighting stance with both fists raised in front of the face', endPose: 'throwing a straight punch, one arm fully extended forward with the fist striking toward the opponent', motion: 'throws a single fast straight punch with the fist toward the opponent, then snaps the arm back to a guarding stance' },
     // 技能2 = 踢腿 (kick): a leg strike (clearly different from the punch).

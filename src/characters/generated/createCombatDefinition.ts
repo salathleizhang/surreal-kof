@@ -1,4 +1,6 @@
-import { CHARACTER_SCALE, STATUS } from '../../config/combat.ts';
+import {
+  CHARACTER_SCALE, DEFAULT_MAX_RAGE, DEFAULT_RAGE_GAIN_PER_HIT, STATUS,
+} from '../../config/combat.ts';
 import type { CombatDefinition, SkillDefinition } from '../../types/combat.ts';
 import type { GeneratedCharacterEntry } from '../../types/generatedCharacter.ts';
 
@@ -66,6 +68,7 @@ export function createGeneratedCombatDefinition(
       id: 'super',
       input: 'special',
       priority: 30,
+      rageCost: 'all',
       animation: STATUS.SUPER,
       name: moves.super?.name,
       stopOnStart: true,
@@ -74,7 +77,7 @@ export function createGeneratedCombatDefinition(
         id: 'super-hit',
         frame: 'apex',
         type: 'direct-hit',
-        hit: { damage: 'all', hitstop: 4, effect: 'hit-spark' },
+        hit: { damage: 'all', hitstop: 4, effect: 'hit-spark', rageGain: 0 },
       }],
     },
   };
@@ -91,6 +94,8 @@ export function createGeneratedCombatDefinition(
   return {
     stats: {
       maxHp: 100,
+      maxRage: DEFAULT_MAX_RAGE,
+      rageGainPerHit: DEFAULT_RAGE_GAIN_PER_HIT,
       moveSpeed: 400,
       jumpSpeed: -1000,
       gravity: 50,

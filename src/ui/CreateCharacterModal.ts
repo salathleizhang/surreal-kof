@@ -19,6 +19,7 @@ const ANIM_LABELS = {
   idle: '站立 IDLE',
   walk: '行走 WALK',
   jump: '跳跃 JUMP',
+  guard: '防御 GUARD',
   attack1: '攻击1 ATK1',
   attack2: '攻击2 ATK2',
   intro: '入场 INTRO',

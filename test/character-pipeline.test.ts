@@ -18,12 +18,16 @@ async function waitForSettled(
   throw new Error(`Timed out waiting for job ${id}`);
 }
 
-test('mock pipeline emits guard, idle-anchored jump and split super assets', async () => {
+test('mock pipeline emits guard, idle-anchored jump/hit and split super assets', async () => {
   const playerDir = await mkdtemp(join(tmpdir(), 'kof-pipeline-'));
   process.env.KOF_GENERATED_PLAYER_DIR = playerDir;
 
   try {
     const pipeline = await import('../server/character-pipeline.ts');
+    const guardPlan = pipeline.ANIMS.find((anim) => anim.key === 'guard');
+    assert.equal(guardPlan?.startKf, 'base');
+    assert.equal(guardPlan?.endKf, 'gen');
+    assert.equal(guardPlan?.playback, 'hold');
     let job: any = pipeline.startCharacterJob({ name: 'Pipeline Test', photoPath: null, mock: true });
 
     job = await waitForSettled(pipeline.getJob, job.id);
@@ -40,6 +44,12 @@ test('mock pipeline emits guard, idle-anchored jump and split super assets', asy
     assert.equal(job.keyframes.jump.generated, false);
     assert.ok(job.keyframes.guard);
     assert.notEqual(job.keyframes.guard.first, job.keyframes.guard.last);
+    assert.equal(job.keyframes.guard.generated, true);
+    assert.match(job.keyframes.guard.first, /base\.preview\.png/);
+    assert.match(job.keyframes.guard.last, /kf\/guard-end\.preview\.png/);
+    assert.ok(job.keyframes.hit);
+    assert.equal(job.keyframes.hit.first, job.keyframes.hit.last);
+    assert.equal(job.keyframes.hit.generated, false);
     assert.ok(job.keyframes.super);
     assert.ok(job.keyframes.superBackground);
 
@@ -50,6 +60,8 @@ test('mock pipeline emits guard, idle-anchored jump and split super assets', asy
     assert.equal(job.manifest.anims.jump.engineState, 3);
     assert.equal(job.manifest.anims.guard.engineState, 10);
     assert.equal(job.manifest.anims.guard.playback, 'hold');
+    assert.equal(job.manifest.anims.hit.engineState, 5);
+    assert.equal(job.manifest.anims.hit.playback, 'forward');
     assert.equal(job.manifest.anims.super.matte, true);
     assert.equal(job.manifest.anims.super.fullscreen, undefined);
     assert.equal(job.manifest.superBackground.matte, false);
@@ -59,6 +71,7 @@ test('mock pipeline emits guard, idle-anchored jump and split super assets', asy
     assert.deepEqual(manifest.superBackground, job.manifest.superBackground);
     assert.equal((await readdir(join(playerDir, job.charId, 'jump'))).length, 8);
     assert.equal((await readdir(join(playerDir, job.charId, 'guard'))).length, 8);
+    assert.equal((await readdir(join(playerDir, job.charId, 'hit'))).length, 8);
     assert.equal((await readdir(join(playerDir, job.charId, 'super'))).length, 25);
     assert.equal((await readdir(join(playerDir, job.charId, 'super-background'))).length, 25);
   } finally {

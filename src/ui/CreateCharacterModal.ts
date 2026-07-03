@@ -20,6 +20,7 @@ const ANIM_LABELS = {
   walk: '行走 WALK',
   jump: '跳跃 JUMP',
   guard: '防御 GUARD',
+  hit: '受击 HIT',
   attack1: '攻击1 ATK1',
   attack2: '攻击2 ATK2',
   intro: '入场 INTRO',

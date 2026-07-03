@@ -96,6 +96,10 @@ export default class FightScene extends Phaser.Scene {
       player.combatState = FIGHTER_STATE.AIRBORNE;
       player.y = player.groundY - 180;
       this.devPreviewFrame = 12;
+    } else if (state === 'hit') {
+      player.status = STATUS.HIT;
+      player.combatState = FIGHTER_STATE.HITSTUN;
+      this.devPreviewFrame = 10;
     } else if (state === 'super') {
       player.status = STATUS.IDLE;
       player.combatState = FIGHTER_STATE.NEUTRAL;

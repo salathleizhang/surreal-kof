@@ -17,6 +17,11 @@ import type {
 } from '../types/generatedCharacter.ts';
 import type { AnimationState } from '../types/combat.ts';
 
+interface LoadProgress {
+  addTotal?: (amount: number) => void;
+  step?: (amount?: number) => void;
+}
+
 // Which engine FSM state each generated animation drives.
 const KEY_TO_STATE: Record<string, AnimationState> = {
   idle: 0, walk: 1, jump: 3, attack1: 4, attack2: 7, super: 8, intro: 9, death: 6,
@@ -32,7 +37,11 @@ function pad4(n: number): string { return String(n).padStart(4, '0'); }
 
 // Load a list of {key,url} images through the scene loader, resolving once all
 // have finished (or rejecting on the first hard error).
-function loadImages(scene: any, entries: Array<{ key: string; url: string }>): Promise<void> {
+function loadImages(
+  scene: any,
+  entries: Array<{ key: string; url: string }>,
+  progress?: LoadProgress,
+): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     const pending = entries.filter((entry) => !scene.textures.exists(entry.key));
     if (!pending.length) { resolve(); return; }
@@ -41,12 +50,15 @@ function loadImages(scene: any, entries: Array<{ key: string; url: string }>): P
     const cleanup = () => {
       loader.off('complete', handleComplete);
       loader.off('loaderror', handleError);
+      loader.off('filecomplete', handleFileComplete);
     };
+    const handleFileComplete = () => progress?.step?.();
     const handleComplete = () => {
       cleanup();
       resolve();
     };
     const handleError = (file: { key?: string; src?: string }) => {
+      progress?.step?.();
       cleanup();
       reject(new Error(`Failed to load ${file.key || file.src}`));
     };
@@ -54,6 +66,7 @@ function loadImages(scene: any, entries: Array<{ key: string; url: string }>): P
     pending.forEach((entry) => loader.image(entry.key, entry.url));
     loader.once('complete', handleComplete);
     loader.once('loaderror', handleError);
+    loader.on('filecomplete', handleFileComplete);
     loader.start();
   });
 }
@@ -76,12 +89,21 @@ function aliasFrames(
   }
 }
 
+function countManifestImages(manifest: GeneratedCharacterManifest): number {
+  const animFrames = Object.values(manifest.anims || {})
+    .reduce((total, info) => total + (info.frames || 0), 0);
+  return animFrames
+    + (manifest.portrait ? 1 : 0)
+    + (manifest.superBackground?.frames || 0);
+}
+
 // Load a manifest's frames into textures and register the character. `base` is a
 // URL prefix (default '') in case assets are served from a sub-path.
 export async function loadGeneratedCharacter(
   scene: any,
   manifest: GeneratedCharacterManifest,
   base = '',
+  progress?: LoadProgress,
 ): Promise<GeneratedCharacterEntry | null> {
   const { id } = manifest;
   if (hasGeneratedCharacter(id)) return getGeneratedCharacter(id);
@@ -138,7 +160,7 @@ export async function loadGeneratedCharacter(
     };
   }
 
-  await loadImages(scene, entries);
+  await loadImages(scene, entries, progress);
 
   // Record each state's source frame size. Most anims share the idle (3:4) size,
   // but the super is landscape (16:9), so the fighter needs per-state dimensions
@@ -194,7 +216,11 @@ export async function loadGeneratedCharacter(
 
 // Fetch the generated-character index and load every previously-made fighter so
 // they survive a page reload. Best-effort: missing index just yields [].
-export async function loadGeneratedIndex(scene: any, base = ''): Promise<GeneratedCharacterEntry[]> {
+export async function loadGeneratedIndex(
+  scene: any,
+  base = '',
+  progress?: LoadProgress,
+): Promise<GeneratedCharacterEntry[]> {
   let index: Array<{ manifest: string }> = [];
   try {
     const resp = await fetch(`${base}assets/player/generated-index.json`, { cache: 'no-store' });
@@ -214,11 +240,15 @@ export async function loadGeneratedIndex(scene: any, base = ''): Promise<Generat
     }
   }));
 
+  progress?.addTotal?.(manifests.reduce((total, manifest) => (
+    total + (manifest ? countManifestImages(manifest) : 0)
+  ), 0));
+
   const loaded: GeneratedCharacterEntry[] = [];
   for (const manifest of manifests) {
     if (!manifest) continue;
     try {
-      const entry = await loadGeneratedCharacter(scene, manifest, base);
+      const entry = await loadGeneratedCharacter(scene, manifest, base, progress);
       if (entry) loaded.push(entry);
     } catch { /* skip a broken entry, keep the rest */ }
   }

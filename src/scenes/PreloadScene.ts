@@ -4,11 +4,14 @@ import { GAME_WIDTH, GAME_HEIGHT, SCENE_KEYS } from '../config/game.ts';
 import { PIXEL_FONT } from '../fonts.ts';
 import { loadUiSounds } from '../audio.ts';
 import { STAGES, STAGE_ORDER } from '../data/stages.ts';
+import { loadGeneratedIndex } from '../services/generatedCharacters.ts';
 import { loadDeferredScenes, registerDeferredScenes } from './sceneRegistry.ts';
 
 // Kyo has seven states, each backed by its own animated GIF:
 // 0: idle, 1: forward, 2: backward, 3: jump, 4: attack, 5: be hit, 6: death
 const KYO_STATE_COUNT = 7;
+const BAR_WIDTH = 420;
+const BAR_HEIGHT = 18;
 
 export default class PreloadScene extends Phaser.Scene {
   // Phaser scene state is populated across preload/create lifecycle hooks.
@@ -26,6 +29,26 @@ export default class PreloadScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
+    const barX = (GAME_WIDTH - BAR_WIDTH) / 2;
+    const barY = GAME_HEIGHT / 2 + 54;
+    this.progressBg = this.add.graphics();
+    this.progressBg.fillStyle(0x183050, 1);
+    this.progressBg.fillRect(barX, barY, BAR_WIDTH, BAR_HEIGHT);
+    this.progressBg.lineStyle(2, 0x7fffd4, 1);
+    this.progressBg.strokeRect(barX, barY, BAR_WIDTH, BAR_HEIGHT);
+    this.progressFill = this.add.graphics();
+    this.progressText = this.add
+      .text(GAME_WIDTH / 2, barY + 34, '0%', {
+        fontFamily: PIXEL_FONT,
+        fontSize: '16px',
+        color: '#7fffd4',
+      })
+      .setOrigin(0.5);
+
+    const handleCoreProgress = (value) => this.setProgress(value * 0.12);
+    this.load.on('progress', handleCoreProgress);
+    this.load.once('complete', () => this.load.off('progress', handleCoreProgress));
+
     // UI sounds go through Phaser's standard loader so they're decoded into the
     // global audio cache before any menu scene runs. (The GIF art is decoded
     // separately in create().)
@@ -39,21 +62,63 @@ export default class PreloadScene extends Phaser.Scene {
     loadUiSounds(this);
   }
 
+  setProgress(value) {
+    const progress = Math.max(this.progressValue || 0, Phaser.Math.Clamp(value, 0, 1));
+    this.progressValue = progress;
+    const barX = (GAME_WIDTH - BAR_WIDTH) / 2;
+    const barY = GAME_HEIGHT / 2 + 54;
+    this.progressFill.clear();
+    this.progressFill.fillStyle(0x7fffd4, 1);
+    this.progressFill.fillRect(barX + 3, barY + 3, (BAR_WIDTH - 6) * progress, BAR_HEIGHT - 6);
+    this.progressText.setText(`${Math.round(progress * 100)}%`);
+  }
+
   // Phaser ignores the returned promise, but we can still `await` inside and
   // only advance to the fight once every GIF has been decoded into textures.
   async create() {
     try {
+      let startupCompleted = 0;
+      const startupTotal = 10;
+      let generatedCompleted = 0;
+      let generatedTotal = 0;
+      const tick = (amount = 1) => {
+        startupCompleted += amount;
+        this.setProgress(0.12 + (startupCompleted / startupTotal) * 0.23);
+      };
+      const addTotal = (amount) => {
+        generatedTotal += amount;
+        this.setProgress(0.35);
+      };
+      const tickGenerated = (amount = 1) => {
+        generatedCompleted += amount;
+        if (generatedTotal > 0) {
+          this.setProgress(0.35 + (generatedCompleted / generatedTotal) * 0.65);
+        }
+      };
+
       // The legacy animated street remains the title-screen backdrop. Fight
       // stages themselves are the static images loaded in preload().
-      const animationTasks = [registerGifTextures(this, 'bg', 'assets/background/0.gif')];
+      const animationTasks = [registerGifTextures(this, 'bg', 'assets/background/0.gif').then((count) => {
+        tick();
+        return count;
+      })];
 
       for (let i = 0; i < KYO_STATE_COUNT; i += 1) {
-        animationTasks.push(registerGifTextures(this, `kyo-${i}`, `assets/player/kyo/${i}.gif`));
+        animationTasks.push(registerGifTextures(this, `kyo-${i}`, `assets/player/kyo/${i}.gif`).then((count) => {
+          tick();
+          return count;
+        }));
       }
+
+      const generatedCharactersTask = loadGeneratedIndex(this, '', { addTotal, step: tickGenerated });
 
       const [animationFrameCounts, deferredScenes] = await Promise.all([
         Promise.all(animationTasks),
-        loadDeferredScenes(),
+        loadDeferredScenes().then((scenes) => {
+          tick(2);
+          return scenes;
+        }),
+        generatedCharactersTask,
       ]);
       const [bgFrameCount, ...kyoFrameCounts] = animationFrameCounts;
 
@@ -61,6 +126,7 @@ export default class PreloadScene extends Phaser.Scene {
       // they can cycle and detect when an animation finishes.
       this.registry.set('bgFrameCount', bgFrameCount);
       this.registry.set('kyoFrameCounts', kyoFrameCounts);
+      this.setProgress(1);
 
       registerDeferredScenes(this.scene, deferredScenes);
       // Development-only direct fight launch keeps combat iteration and browser

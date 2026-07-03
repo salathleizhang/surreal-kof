@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { getCharacter, SELECT_GRID } from '../objects/roster.ts';
-import { loadGeneratedCharacter, loadGeneratedIndex } from '../services/generatedCharacters.ts';
+import { loadGeneratedCharacter } from '../services/generatedCharacters.ts';
 import { listGeneratedCharacters } from '../state/generatedCharacters.ts';
 import { PIXEL_FONT, PIXEL_FONT_CN } from '../fonts.ts';
 import { setVerticalGradient } from '../utils/text.ts';
@@ -119,7 +119,6 @@ export default class SelectScene extends Phaser.Scene {
 
     // Keep the menu theme going (no-op if it's already playing from the title).
     startMenuBgm(this);
-    this.loadGeneratedRoster();
 
     // Browser QA can enter the DOM wizard directly while still exercising the
     // real scene integration. Both flags are development-only.
@@ -273,15 +272,6 @@ export default class SelectScene extends Phaser.Scene {
     cell.charKey = entry.id;
     this.paintCell(cell);
     this.drawCursors();
-  }
-
-  async loadGeneratedRoster() {
-    try {
-      const entries = await loadGeneratedIndex(this);
-      entries.forEach((entry) => this.addGeneratedCharacter(entry));
-    } catch (error) {
-      console.warn('Could not load generated characters', error);
-    }
   }
 
   // Open the DOM modal that drives the generation pipeline. Disabled while one is

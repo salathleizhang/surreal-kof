@@ -5,6 +5,21 @@ import SkillRunner from '../src/combat/SkillRunner.ts';
 import { intersectsAabb, localBoxToWorld } from '../src/combat/collision/geometry.ts';
 import { isGuardInput, resolveDamage } from '../src/combat/guard.ts';
 import { createGeneratedCombatDefinition } from '../src/characters/generated/createCombatDefinition.ts';
+import {
+  DEFAULT_WINNER_QUOTE, getWinnerQuote, WINNER_QUOTES,
+} from '../src/data/winnerQuotes.ts';
+
+test('winner quotes cover every requested fighter verbatim', () => {
+  assert.deepEqual(WINNER_QUOTES, {
+    'fighter-87633c7b': '理解万岁！',
+    chenmian: '此一时彼一时！',
+    speed: 'siu！',
+    kobe: 'man！what can i say！',
+    caixukun: '你～干～嘛',
+    'fengge-wangming-tianya': '这是好事儿啊！',
+  });
+  assert.equal(getWinnerQuote('kyo'), DEFAULT_WINNER_QUOTE);
+});
 
 test('local boxes mirror around fighters without changing authored dimensions', () => {
   const fighter = {

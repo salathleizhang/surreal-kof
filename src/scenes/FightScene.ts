@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { DEFAULT_RAGE_GAIN_PER_HIT, FIGHTER_STATE, STATUS } from '../config/combat.ts';
 import { getCharacter, DEFAULT_CHARACTER } from '../objects/roster.ts';
 import { getStage } from '../data/stages.ts';
+import { getWinnerQuote } from '../data/winnerQuotes.ts';
 import { PIXEL_FONT, PIXEL_FONT_CN } from '../fonts.ts';
 import { playUi, stopMenuBgm } from '../audio.ts';
 import { SCENE_KEYS } from '../config/game.ts';
@@ -77,7 +78,9 @@ export default class FightScene extends Phaser.Scene {
     stopMenuBgm();
     const params = new URLSearchParams(globalThis.location?.search || '');
     this.devPreviewState = import.meta.env.DEV ? params.get('previewState') : null;
-    if (this.devPreviewState) this.applyDevPreviewState(this.devPreviewState);
+    this.devPreviewWinner = import.meta.env.DEV ? params.get('previewWinner') : null;
+    if (this.devPreviewWinner) this.applyDevWinnerPreview(this.devPreviewWinner);
+    else if (this.devPreviewState) this.applyDevPreviewState(this.devPreviewState);
     else this.startIntro();
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -113,6 +116,17 @@ export default class FightScene extends Phaser.Scene {
     } else {
       this.devPreviewState = null;
     }
+  }
+
+  // Development-only shortcut for reviewing the post-fight composition without
+  // having to play through an entire round. `previewWinner=2` selects player 2;
+  // every other truthy value selects player 1.
+  applyDevWinnerPreview(value) {
+    this.introActive = false;
+    this.gameOver = true;
+    this.koShown = true;
+    const winner = this.players[value === '2' ? 1 : 0] || this.players[0];
+    this.time.delayedCall(50, () => this.showWinnerScreen(winner));
   }
 
   createBackground(width, height, scene) {
@@ -453,8 +467,7 @@ export default class FightScene extends Phaser.Scene {
     this.showKo();
   }
 
-  // The big "K.O." slam, followed by the "press any key" prompt that returns to
-  // the title screen.
+  // The big "K.O." slam, followed by the dedicated winner screen.
   showKo() {
     const { width, height } = this.scale;
 
@@ -465,6 +478,7 @@ export default class FightScene extends Phaser.Scene {
     const p1Dead = this.players[0].isDead();
     const p2Dead = this.players[1].isDead();
     const lose = (p1Dead && p2Dead) || (this.mode === 'single' && p1Dead);
+    const winner = p1Dead === p2Dead ? null : this.players[p1Dead ? 1 : 0];
     this.time.delayedCall(1000, () => playUi(this, lose ? 'gameover' : 'winner'));
 
     const ko = this.add
@@ -491,34 +505,169 @@ export default class FightScene extends Phaser.Scene {
       ease: 'Back.easeOut',
     });
 
-    // After a beat, offer the "press any key" prompt and arm the return.
-    this.time.delayedCall(800, () => {
-      const hint = this.add
-        .text(width / 2, height / 2 + 120, 'PRESS ANY KEY', {
+    // Let the KO land, then clear it out before presenting the winner's pose.
+    this.time.delayedCall(900, () => {
+      this.tweens.add({
+        targets: ko,
+        scale: 1.15,
+        alpha: 0,
+        duration: 260,
+        ease: 'Quad.easeIn',
+        onComplete: () => ko.destroy(),
+      });
+    });
+    this.time.delayedCall(1200, () => this.showWinnerScreen(winner));
+  }
+
+  showWinnerScreen(winner) {
+    if (this.resultShown) return;
+    this.resultShown = true;
+
+    const { width, height } = this.scale;
+    const result = this.add.container(0, 0).setDepth(40).setAlpha(0);
+    const backdrop = this.add.graphics();
+    backdrop.fillStyle(0x050307, 0.98);
+    backdrop.fillRect(0, 0, width, height);
+    backdrop.fillStyle(winner ? 0x8f071f : 0x242132, 1);
+    backdrop.beginPath();
+    backdrop.moveTo(0, 0);
+    backdrop.lineTo(width * 0.5, 0);
+    backdrop.lineTo(width * 0.38, height);
+    backdrop.lineTo(0, height);
+    backdrop.closePath();
+    backdrop.fillPath();
+    backdrop.fillStyle(0xffc928, 1);
+    backdrop.fillRect(0, 0, width, 10);
+    backdrop.fillRect(0, height - 10, width, 10);
+    result.add(backdrop);
+
+    if (winner) {
+      const character = getCharacter(winner.charKey);
+      const characterName = character?.cn || character?.name || winner.charKey;
+      const quote = getWinnerQuote(winner.charKey);
+      const intro = winner.animations.get(STATUS.INTRO);
+      const poseState = intro ? STATUS.INTRO : STATUS.IDLE;
+      const poseAnimation = intro || winner.animations.get(STATUS.IDLE);
+      const poseFrame = Math.max(0, (poseAnimation?.frame_cnt || 1) - 1);
+      const poseKey = `${winner.texturePrefix}-${poseState}-${poseFrame}`;
+      const pose = this.add.image(-80, height + 8, poseKey).setOrigin(0.5, 1).setAlpha(0);
+      const poseScale = Math.min((height * 0.91) / pose.height, (width * 0.47) / pose.width);
+      pose.setScale(poseScale * 0.82);
+      result.add(pose);
+
+      const eyebrow = this.add
+        .text(width * 0.58, 94, 'THE KING OF FIGHTERS', {
           fontFamily: PIXEL_FONT,
-          fontSize: '28px',
+          fontSize: '18px',
+          color: '#ffcc33',
+        })
+        .setAlpha(0);
+      const winnerLabel = this.add
+        .text(width * 0.58, 130, 'WINNER', {
+          fontFamily: PIXEL_FONT,
+          fontSize: '70px',
+          color: '#ffffff',
+          stroke: '#7d0016',
+          strokeThickness: 10,
+        })
+        .setAlpha(0);
+      const name = this.add
+        .text(width * 0.58, 250, characterName, {
+          fontFamily: PIXEL_FONT_CN,
+          fontSize: '34px',
+          fontStyle: 'bold',
           color: '#ffcc33',
           stroke: '#000000',
           strokeThickness: 6,
-          align: 'center',
         })
-        .setOrigin(0.5)
-        .setDepth(30);
+        .setAlpha(0);
+      const rule = this.add.rectangle(width * 0.58, 312, width * 0.34, 6, 0xffcc33)
+        .setOrigin(0, 0.5)
+        .setAlpha(0);
+      const quoteLabel = this.add
+        .text(width * 0.58, 354, quote, {
+          fontFamily: PIXEL_FONT_CN,
+          fontSize: '42px',
+          fontStyle: 'bold',
+          color: '#ffffff',
+          stroke: '#000000',
+          strokeThickness: 7,
+          lineSpacing: 16,
+          wordWrap: { width: width * 0.37, useAdvancedWrap: true },
+        })
+        .setAlpha(0);
+      result.add([eyebrow, winnerLabel, name, rule, quoteLabel]);
 
-      // Blink the prompt so it reads as interactive.
       this.tweens.add({
-        targets: hint,
-        alpha: 0.2,
-        duration: 500,
-        yoyo: true,
-        repeat: -1,
+        targets: pose,
+        x: width * 0.27,
+        scaleX: poseScale,
+        scaleY: poseScale,
+        alpha: 1,
+        duration: 420,
+        ease: 'Back.easeOut',
       });
+      this.tweens.add({
+        targets: [eyebrow, winnerLabel, name, rule, quoteLabel],
+        x: '+=28',
+        alpha: 1,
+        duration: 300,
+        delay: this.tweens.stagger(75, { start: 120 }),
+        ease: 'Quad.easeOut',
+      });
+      this.game.canvas.setAttribute('aria-label', `胜者界面：${characterName}，${quote}`);
+    } else {
+      const drawLabel = this.add
+        .text(width / 2, height / 2 - 38, 'DRAW', {
+          fontFamily: PIXEL_FONT,
+          fontSize: '96px',
+          color: '#ffffff',
+          stroke: '#000000',
+          strokeThickness: 12,
+        })
+        .setOrigin(0.5);
+      const drawSub = this.add
+        .text(width / 2, height / 2 + 70, '胜负未分', {
+          fontFamily: PIXEL_FONT_CN,
+          fontSize: '36px',
+          color: '#ffcc33',
+          stroke: '#000000',
+          strokeThickness: 6,
+        })
+        .setOrigin(0.5);
+      result.add([drawLabel, drawSub]);
+      this.game.canvas.setAttribute('aria-label', '平局界面：胜负未分');
+    }
 
-      // Any key (or tap) returns to the title screen, which restarts the menu BGM.
-      const toTitle = () => this.scene.start(SCENE_KEYS.TITLE);
-      this.input.keyboard.once('keydown', toTitle);
-      this.input.once('pointerdown', toTitle);
+    this.tweens.add({ targets: result, alpha: 1, duration: 240, ease: 'Quad.easeOut' });
+    this.time.delayedCall(520, () => this.armResultExit(result));
+  }
+
+  armResultExit(result) {
+    const { width, height } = this.scale;
+    const hint = this.add
+      .text(width * 0.77, height - 54, 'PRESS ANY KEY', {
+        fontFamily: PIXEL_FONT,
+        fontSize: '18px',
+        color: '#ffcc33',
+        stroke: '#000000',
+        strokeThickness: 5,
+      })
+      .setOrigin(0.5)
+      .setAlpha(0);
+    result.add(hint);
+    this.tweens.add({
+      targets: hint,
+      alpha: 1,
+      duration: 350,
+      yoyo: true,
+      repeat: -1,
     });
+
+    // Any key (or tap) returns to the title screen, which restarts the menu BGM.
+    const toTitle = () => this.scene.start(SCENE_KEYS.TITLE);
+    this.input.keyboard.once('keydown', toTitle);
+    this.input.once('pointerdown', toTitle);
   }
 
   updateTimer(timedelta) {

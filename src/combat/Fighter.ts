@@ -67,6 +67,7 @@ export default class Fighter {
   combatState: string;
   animations: Map<AnimationState, AnimationDefinition>;
   texturePrefix: string;
+  charKey: string;
   frame_current_cnt: number;
   maxHp: number;
   hp: number;
@@ -108,6 +109,7 @@ export default class Fighter {
     this.combatState = FIGHTER_STATE.NEUTRAL;
     this.animations = new Map<AnimationState, AnimationDefinition>();
     this.texturePrefix = info.texturePrefix;
+    this.charKey = info.charKey || info.texturePrefix;
     this.frame_current_cnt = 0;
 
     this.maxHp = this.stats.maxHp ?? 100;

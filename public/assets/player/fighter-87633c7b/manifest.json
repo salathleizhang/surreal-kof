@@ -4,7 +4,7 @@
   "cn": "老罗",
   "summary": "",
   "base": "assets/player/fighter-87633c7b/base.png",
-  "portrait": "assets/player/fighter-87633c7b/portrait.png",
+  "portrait": "assets/player/fighter-87633c7b/intro/0008.png",
   "anims": {
     "idle": {
       "engineState": 0,

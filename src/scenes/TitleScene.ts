@@ -23,6 +23,7 @@ export default class TitleScene extends Phaser.Scene {
 
   create() {
     const { width, height } = this.scale;
+    this.game.canvas.setAttribute('aria-label', '游戏标题界面');
 
     this.createBackground(width, height);
 

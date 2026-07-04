@@ -4,15 +4,8 @@
   "cn": "老罗",
   "summary": "",
   "base": "assets/player/fighter-87633c7b/base.png",
-  "portrait": "assets/player/fighter-87633c7b/idle/0001.png",
+  "portrait": "assets/player/fighter-87633c7b/portrait.png",
   "anims": {
-    "walk": {
-      "engineState": 1,
-      "dir": "assets/player/fighter-87633c7b/walk",
-      "frames": 8,
-      "playback": "loop",
-      "matte": true
-    },
     "idle": {
       "engineState": 0,
       "dir": "assets/player/fighter-87633c7b/idle",
@@ -20,24 +13,58 @@
       "playback": "loop",
       "matte": true
     },
+    "walk": {
+      "engineState": 1,
+      "dir": "assets/player/fighter-87633c7b/walk",
+      "frames": 8,
+      "playback": "loop",
+      "matte": true
+    },
+    "jump": {
+      "engineState": 3,
+      "dir": "assets/player/fighter-87633c7b/jump",
+      "frames": 8,
+      "frameRate": 5,
+      "playback": "forward",
+      "matte": true
+    },
+    "guard": {
+      "engineState": 10,
+      "dir": "assets/player/fighter-87633c7b/guard",
+      "frames": 8,
+      "frameRate": 5,
+      "playback": "hold",
+      "matte": true
+    },
+    "hit": {
+      "engineState": 5,
+      "dir": "assets/player/fighter-87633c7b/hit",
+      "frames": 8,
+      "frameRate": 5,
+      "playback": "forward",
+      "matte": true
+    },
     "attack1": {
       "engineState": 4,
       "dir": "assets/player/fighter-87633c7b/attack1",
-      "frames": 7,
-      "playback": "yoyo",
+      "frames": 8,
+      "frameRate": 5,
+      "playback": "forward",
       "matte": true
     },
     "attack2": {
       "engineState": "attack2",
       "dir": "assets/player/fighter-87633c7b/attack2",
-      "frames": 7,
-      "playback": "yoyo",
+      "frames": 15,
+      "frameRate": 3,
+      "playback": "forward",
       "matte": true
     },
     "intro": {
       "engineState": "intro",
       "dir": "assets/player/fighter-87633c7b/intro",
       "frames": 8,
+      "frameRate": 5,
       "playback": "forward",
       "matte": true
     },
@@ -45,16 +72,26 @@
       "engineState": 6,
       "dir": "assets/player/fighter-87633c7b/death",
       "frames": 10,
+      "frameRate": 5,
       "playback": "hold",
       "matte": true
     },
     "super": {
       "engineState": "super",
       "dir": "assets/player/fighter-87633c7b/super",
-      "frames": 14,
+      "frames": 12,
+      "frameRate": 5,
       "playback": "forward",
-      "matte": false
+      "matte": true
     }
+  },
+  "superBackground": {
+    "dir": "assets/player/fighter-87633c7b/super-background",
+    "frames": 25,
+    "frameRate": 10,
+    "playback": "forward",
+    "matte": false,
+    "fullscreen": true
   },
   "moves": {
     "attack1": {
@@ -66,7 +103,7 @@
       "damage": 24
     },
     "super": {
-      "name": "终极爆炎波",
+      "name": "理解万岁",
       "damage": 40
     }
   },

@@ -8,6 +8,7 @@ import { createGeneratedCombatDefinition } from '../src/characters/generated/cre
 import {
   DEFAULT_WINNER_QUOTE, getWinnerQuote, WINNER_QUOTES,
 } from '../src/data/winnerQuotes.ts';
+import { resolveGeneratedFigureTexture } from '../src/services/generatedCharacters.ts';
 
 test('winner quotes cover every requested fighter verbatim', () => {
   assert.deepEqual(WINNER_QUOTES, {
@@ -19,6 +20,16 @@ test('winner quotes cover every requested fighter verbatim', () => {
     'fengge-wangming-tianya': '这是好事儿啊！',
   });
   assert.equal(getWinnerQuote('kyo'), DEFAULT_WINNER_QUOTE);
+});
+
+test('large generated-character art uses the final entrance pose', () => {
+  assert.equal(resolveGeneratedFigureTexture('speed', {
+    0: { frame_cnt: 8, frame_rate: 6, playback: 'loop' },
+    9: { frame_cnt: 8, frame_rate: 4, playback: 'forward' },
+  }), 'speed-9-7');
+  assert.equal(resolveGeneratedFigureTexture('legacy', {
+    0: { frame_cnt: 8, frame_rate: 6, playback: 'loop' },
+  }), 'legacy-0-0');
 });
 
 test('local boxes mirror around fighters without changing authored dimensions', () => {

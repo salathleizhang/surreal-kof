@@ -193,12 +193,13 @@ export default class SceneSelectScene extends Phaser.Scene {
       const flip = id === 1;
       const homeX = cfg.boxX + boxW / 2;
       const char = getCharacter(this.selections[id]) || getCharacter(DEFAULT_CHARACTER);
+      const figureTexture = char.figure || char.portrait;
 
       const figure = this.add
-        .image(homeX, boxY + boxH, char.portrait)
+        .image(homeX, boxY + boxH, figureTexture)
         .setOrigin(0.5, 1)
         .setDepth(3);
-      const src = this.textures.get(char.portrait).getSourceImage();
+      const src = this.textures.get(figureTexture).getSourceImage();
       const scale = Math.min(boxW / src.width, boxH / src.height);
       figure.setScale(flip ? -scale : scale, scale);
 

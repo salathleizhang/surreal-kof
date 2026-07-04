@@ -197,6 +197,14 @@ export default class FightScene extends Phaser.Scene {
     flash('Ready', 1400, 700);
     flash('Go', 2600, 1100);
     this.time.delayedCall(INTRO_MS, () => {
+      for (const player of this.players) {
+        if (!player.isDead() && player.status === STATUS.INTRO) {
+          player.status = STATUS.IDLE;
+          player.combatState = FIGHTER_STATE.NEUTRAL;
+          player.frame_current_cnt = 0;
+          player.vx = 0;
+        }
+      }
       this.introActive = false;
     });
   }

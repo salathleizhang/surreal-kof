@@ -27,6 +27,20 @@ const KEY_TO_STATE: Record<string, AnimationState> = {
   idle: 0, walk: 1, jump: 3, attack1: 4, hit: 5, attack2: 7, super: 8, intro: 9, guard: 10, death: 6,
 };
 
+// Large character art uses the authored entrance pose, while compact roster
+// cells keep using the separately generated portrait. Older manifests without
+// an intro animation gracefully fall back to their first idle frame.
+export function resolveGeneratedFigureTexture(
+  id: string,
+  animMeta: Record<string, GeneratedAnimationMeta>,
+): string {
+  const introState = KEY_TO_STATE.intro;
+  const intro = animMeta[String(introState)];
+  return intro?.frame_cnt
+    ? `${id}-${introState}-${intro.frame_cnt - 1}`
+    : `${id}-${KEY_TO_STATE.idle}-0`;
+}
+
 // Game frames per sprite frame, by playback mode (≈60fps): looping idles are
 // slow, attacks are snappy.
 const FRAME_RATE: Record<string, number> = {
@@ -208,7 +222,7 @@ export async function loadGeneratedCharacter(
     name: manifest.name || id.toUpperCase(),
     cn: manifest.cn || manifest.name || id,
     portrait: manifest.portrait && scene.textures.exists(portraitKey) ? portraitKey : `${id}-0-0`,
-    figure: `${id}-0-0`,
+    figure: resolveGeneratedFigureTexture(id, animMeta),
     srcW: idleSrc.width,
     srcH: idleSrc.height,
     animMeta,

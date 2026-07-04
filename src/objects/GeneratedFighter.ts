@@ -65,7 +65,9 @@ export default class GeneratedFighter extends Fighter {
       const animation: AnimationDefinition = {
         frame_cnt: meta.frame_cnt,
         frame_rate: meta.frame_rate,
-        playback: meta.playback,
+        // The entrance owns the pre-fight ceremony: play into the authored pose
+        // and hold its last frame until FightScene releases both fighters on Go.
+        playback: state === STATUS.INTRO ? 'hold' : meta.playback,
         offset_y: offsetY,
         offset_x: offsetX,
         scale,

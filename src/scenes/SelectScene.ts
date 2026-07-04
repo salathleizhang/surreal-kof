@@ -45,6 +45,7 @@ export default class SelectScene extends Phaser.Scene {
 
   create(data) {
     const { width, height } = this.scale;
+    this.game.canvas.setAttribute('aria-label', '角色选择界面');
 
     // 'single' = 1P vs CPU, 'versus' = two humans (the original mode).
     this.mode = (data && data.mode) || 'versus';

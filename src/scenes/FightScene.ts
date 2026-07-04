@@ -68,6 +68,7 @@ export default class FightScene extends Phaser.Scene {
     this.gameOver = false; // set once a fighter is KO'd; freezes input + clock
     this.koShown = false; // becomes true once the "K.O." has been revealed
     this.koWait = 0; // ms waited (post-KO) for the HP trails to finish draining
+    this.resultShown = false; // reset when the same scene instance starts a rematch
     this.createDustTexture();
     this.createHud();
     this.combatDebug = new CombatDebugOverlay(this, this.combatWorld);
@@ -123,10 +124,12 @@ export default class FightScene extends Phaser.Scene {
   // every other truthy value selects player 1.
   applyDevWinnerPreview(value) {
     this.introActive = false;
-    this.gameOver = true;
-    this.koShown = true;
-    const winner = this.players[value === '2' ? 1 : 0] || this.players[0];
-    this.time.delayedCall(50, () => this.showWinnerScreen(winner));
+    const winnerIndex = value === '2' ? 1 : 0;
+    const loser = this.players[winnerIndex === 0 ? 1 : 0];
+    loser.defeat();
+    loser.hpGreen = 0;
+    loser.hpRed = 0;
+    this.checkKo();
   }
 
   createBackground(width, height, scene) {

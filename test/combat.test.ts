@@ -8,7 +8,10 @@ import { createGeneratedCombatDefinition } from '../src/characters/generated/cre
 import {
   DEFAULT_WINNER_QUOTE, getWinnerQuote, WINNER_QUOTES,
 } from '../src/data/winnerQuotes.ts';
-import { resolveGeneratedFigureTexture } from '../src/services/generatedCharacters.ts';
+import {
+  findVisibleBounds, resolveGeneratedFigureTexture,
+} from '../src/services/generatedCharacters.ts';
+import { fitVisibleSprite } from '../src/utils/spriteLayout.ts';
 
 test('winner quotes cover every requested fighter verbatim', () => {
   assert.deepEqual(WINNER_QUOTES, {
@@ -30,6 +33,22 @@ test('large generated-character art uses the final entrance pose', () => {
   assert.equal(resolveGeneratedFigureTexture('legacy', {
     0: { frame_cnt: 8, frame_rate: 6, playback: 'loop' },
   }), 'legacy-0-0');
+});
+
+test('sprite layout fits visible pixels instead of transparent canvas margins', () => {
+  const pixels = new Uint8ClampedArray(10 * 12 * 4);
+  for (let y = 3; y <= 10; y += 1) {
+    for (let x = 2; x <= 5; x += 1) pixels[(y * 10 + x) * 4 + 3] = 255;
+  }
+  const bounds = findVisibleBounds(pixels, 10, 12);
+  assert.deepEqual(bounds, {
+    x: 2, y: 3, width: 4, height: 8, sourceWidth: 10, sourceHeight: 12,
+  });
+  assert.deepEqual(fitVisibleSprite(10, 12, bounds, 20, 24), {
+    originX: 0.4,
+    originY: 11 / 12,
+    scale: 3,
+  });
 });
 
 test('local boxes mirror around fighters without changing authored dimensions', () => {

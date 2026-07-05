@@ -6,6 +6,7 @@ import { PIXEL_FONT, PIXEL_FONT_CN } from '../fonts.ts';
 import { setVerticalGradient } from '../utils/text.ts';
 import { playUi, startMenuBgm } from '../audio.ts';
 import { SCENE_KEYS } from '../config/game.ts';
+import { fitVisibleSprite } from '../utils/spriteLayout.ts';
 
 // The grid cell that opens the "create custom fighter" modal instead of being a
 // selectable character.
@@ -474,8 +475,9 @@ export default class SelectScene extends Phaser.Scene {
     fig.figure.setVisible(true);
     fig.figure.setTexture(figureTexture);
     const src = this.textures.get(figureTexture).getSourceImage();
-    const scale = Math.min(fig.boxW / src.width, fig.boxH / src.height);
-    fig.figure.setScale(fig.flip ? -scale : scale, scale);
+    const layout = fitVisibleSprite(src.width, src.height, char.figureBounds, fig.boxW, fig.boxH);
+    fig.figure.setOrigin(layout.originX, layout.originY);
+    fig.figure.setScale(fig.flip ? -layout.scale : layout.scale, layout.scale);
     fig.name.setText(char.cn || char.name);
   }
 

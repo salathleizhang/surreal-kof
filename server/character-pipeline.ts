@@ -26,6 +26,25 @@ const PUBLIC_DIR = join(__dirname, '..', 'public');
 // Tests can isolate generated output in a temp directory without touching the
 // real roster; production keeps writing to Vite's public asset tree.
 const PLAYER_DIR = process.env.KOF_GENERATED_PLAYER_DIR || join(PUBLIC_DIR, 'assets', 'player');
+export const LAOLUO_IDLE_STYLE_REFERENCE = join(
+  PUBLIC_DIR,
+  'assets',
+  'player',
+  'fighter-87633c7b',
+  'idle',
+  '0001.png',
+);
+
+export const BASE_REFERENCE_ROLES = 'Reference image 1 defines the target character identity, face, hairstyle, body build, clothing and colors. '
+  + 'Reference image 2 is the Lao Luo idle sprite and is a STYLE REFERENCE ONLY: match only its logical pixel density, uniform pixel-block size, '
+  + 'outline thickness, limited palette, shading complexity, body proportions and camera distance. Do not copy reference image 2 identity, face, '
+  + 'hair, clothing, body shape or pose.';
+
+export function baseImageReferences(photoPath) {
+  if (!photoPath) return [];
+  return [photoPath, existsSync(LAOLUO_IDLE_STYLE_REFERENCE) ? LAOLUO_IDLE_STYLE_REFERENCE : null]
+    .filter(Boolean);
+}
 
 // The ten generated fighter animations. `engineState` maps each onto the fighter FSM
 // (0 idle, 1 walk, 3 jump, 4 attack, 5 hit, 6 death, 10 guard) or a named extra state
@@ -99,6 +118,17 @@ const ASPECT = '3:4'; // tall full-body framing for both stills and video
 const IMG_RES = '1K';
 const VID_RES = '480p';
 
+// Treat the generated 1K/480p files as nearest-neighbour enlargements of one
+// canonical logical sprite grid. This prevents the image/video models from
+// drifting between ultra-chunky 16px art and much finer 32/64px detail tiers.
+export const SPRITE_PIXEL_GRID_STANDARD = 'strict consistent native pixel density: author the fighter on one 96 x 128 logical-pixel sprite canvas, '
+  + 'with the standing body approximately 112 logical pixels tall from head to toe; every visible block is one uniform square logical pixel, '
+  + 'then enlarge only with nearest-neighbour scaling; never switch to a chunky 16px sprite, mixed-size pixel blocks, antialiasing, '
+  + 'smooth vector edges, high-resolution pseudo-pixel art or painterly detail';
+export const SPRITE_FRAMING_STANDARD = 'fixed 3:4 orthographic fighting-game camera: keep the fighter horizontally centered, '
+  + 'top of the head near 6% of the canvas height and both feet on one shared baseline at 96% of the canvas height; '
+  + 'keep camera distance, body scale, logical pixel size and floor baseline identical in every pose and frame';
+
 // Hard technical constraints appended to every still prompt; the per-state pose
 // (above) is the only thing that varies. Magenta backdrop is what the matte keys.
 export const CHARACTER_BODY_PROPORTIONS = 'consistent six-heads-tall adult body proportions: when measured along the body, '
@@ -106,6 +136,7 @@ export const CHARACTER_BODY_PROPORTIONS = 'consistent six-heads-tall adult body 
   + 'preserve the character-specific build (slim, athletic or stocky) without changing this six-head ratio; '
   + 'never chibi, super-deformed, childlike, big-headed, four-heads-tall or squat cartoon proportions';
 const STYLE_BASE = 'retro 16-bit pixel-art fighting game sprite in King of Fighters style, '
+  + `${SPRITE_PIXEL_GRID_STANDARD}, ${SPRITE_FRAMING_STANDARD}, `
   + 'single full-body character shown head to toe, standing upright on both feet, '
   + `${CHARACTER_BODY_PROPORTIONS}, `
   + 'entire body visible from the top of the head down to the shoes, both feet and both legs fully in frame, '
@@ -198,13 +229,14 @@ async function downloadTo(url, dest) {
 async function genImage({
   from, prompt, dest, aspect = ASPECT, resolution = IMG_RES,
 }) {
-  const endpoint = from
+  const images = (Array.isArray(from) ? from : [from]).filter(Boolean);
+  const endpoint = images.length
     ? 'google/nano-banana-pro/edit'
     : 'google/nano-banana-pro/generation';
   const body: Record<string, unknown> = {
     prompt, aspectRatio: aspect, resolution, maxWait: 300,
   };
-  if (from) body.images = [from];
+  if (images.length) body.images = images;
   const out = await runStudio(endpoint, body);
   if (!out.body.ok) throw new Error(`image gen failed: ${out.body.stderr || out.body.error || 'unknown'}`);
   const urls = extractAssetUrls(out.body.result);
@@ -542,8 +574,13 @@ async function stageBase(job, charDir, workDir, log) {
   if (job.mock) {
     await writeFile(basePath, PNG.sync.write(synthFrame(96, 128, 0, 200)));
   } else {
-    const basePrompt = `${STYLE_BASE}. Neutral idle fighting stance. Keep the same person/character as the reference photo — their face, hairstyle, outfit and colours — but render the COMPLETE full body from head to toe even if the reference photo is only a face shot, a portrait or a half-body crop: invent and draw the rest of the body, legs and feet so the whole standing figure is shown. ${MAGENTA_BG}.`;
-    await genImage({ from: job._photoPath, prompt: basePrompt, dest: basePath });
+    const references = baseImageReferences(job._photoPath);
+    const referenceRoles = references.length > 1 ? `${BASE_REFERENCE_ROLES} ` : '';
+    const identityInstruction = references.length
+      ? 'Keep the same person/character as reference image 1 — their face, hairstyle, outfit and colours — but render the COMPLETE full body from head to toe even if the identity reference is only a face shot, a portrait or a half-body crop: invent and draw the rest of the body, legs and feet so the whole standing figure is shown.'
+      : 'Create one distinct original fighter and render the COMPLETE full body from head to toe.';
+    const basePrompt = `${referenceRoles}${STYLE_BASE}. Neutral idle fighting stance. ${identityInstruction} ${MAGENTA_BG}.`;
+    await genImage({ from: references, prompt: basePrompt, dest: basePath });
   }
   job._baseAbs = basePath;
   // The base stays on magenta (needed as the img2img anchor), but for review we
@@ -715,7 +752,7 @@ async function stageFrames(job, charDir, workDir, log) {
         lastFrame: kf.lastAbs, // equals first frame for loops -> seamless loop
         prompt: anim.characterReference === false
           ? a.motion
-          : `${CHARACTER_BODY_PROPORTIONS}. Keep the character body proportions unchanged in every frame. ${a.motion}`,
+          : `${SPRITE_PIXEL_GRID_STANDARD}. ${SPRITE_FRAMING_STANDARD}. ${CHARACTER_BODY_PROPORTIONS}. Keep the character body proportions unchanged in every frame. ${a.motion}`,
         duration: anim.duration,
         dest: videoPath,
         aspect: anim.aspect, // landscape for the full-screen super

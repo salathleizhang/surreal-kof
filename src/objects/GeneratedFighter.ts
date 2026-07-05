@@ -37,13 +37,10 @@ export default class GeneratedFighter extends Fighter {
     const entry = this.entry;
     if (!entry) return;
 
-    // Fit the full-body art so its feet rest on the hitbox bottom and it stands
-    // a little taller than the hitbox (head/feet show above/below). Centre it
-    // horizontally over the hitbox.
+    // Every generated source has different transparent margins and sometimes a
+    // different canvas resolution. Fit the visible fighter — not the PNG canvas
+    // — to one shared height, horizontal centre and foot baseline.
     const displayH = this.height * 1.4;
-    const scale = displayH / entry.srcH;
-    const offsetY = this.height - entry.srcH * scale; // negative: art rises above
-    const offsetX = (this.width - entry.srcW * scale) / 2;
 
     for (const [stateStr, meta] of Object.entries(entry.animMeta)) {
       const numericState = Number(stateStr);
@@ -62,6 +59,19 @@ export default class GeneratedFighter extends Fighter {
         });
         continue;
       }
+      const sourceWidth = meta.srcW || entry.srcW;
+      const sourceHeight = meta.srcH || entry.srcH;
+      const bounds = meta.bounds || {
+        x: 0,
+        y: 0,
+        width: sourceWidth,
+        height: sourceHeight,
+        sourceWidth,
+        sourceHeight,
+      };
+      const scale = displayH / Math.max(1, bounds.height);
+      const offsetY = this.height - (bounds.y + bounds.height) * scale;
+      const offsetX = this.width / 2 - (bounds.x + bounds.width / 2) * scale;
       const animation: AnimationDefinition = {
         frame_cnt: meta.frame_cnt,
         frame_rate: meta.frame_rate,

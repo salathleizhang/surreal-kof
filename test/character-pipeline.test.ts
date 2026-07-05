@@ -24,6 +24,15 @@ test('mock pipeline emits guard, idle-anchored jump/hit and split super assets',
 
   try {
     const pipeline = await import('../server/character-pipeline.ts');
+    assert.match(pipeline.SPRITE_PIXEL_GRID_STANDARD, /96 x 128 logical-pixel/);
+    assert.match(pipeline.SPRITE_PIXEL_GRID_STANDARD, /112 logical pixels tall/);
+    assert.match(pipeline.SPRITE_FRAMING_STANDARD, /baseline at 96%/);
+    const baseReferences = pipeline.baseImageReferences('/tmp/target-person.png');
+    assert.equal(baseReferences[0], '/tmp/target-person.png');
+    assert.equal(baseReferences.length, 2);
+    assert.match(baseReferences[1], /fighter-87633c7b\/idle\/0001\.png$/);
+    assert.match(pipeline.BASE_REFERENCE_ROLES, /STYLE REFERENCE ONLY/);
+    assert.doesNotMatch(baseReferences[1], /attack|intro|super/);
     const guardPlan = pipeline.ANIMS.find((anim) => anim.key === 'guard');
     assert.equal(guardPlan?.startKf, 'base');
     assert.equal(guardPlan?.endKf, 'gen');

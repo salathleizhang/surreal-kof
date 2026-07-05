@@ -13,7 +13,7 @@ import {
   registerGeneratedCharacter,
 } from '../state/generatedCharacters.ts';
 import type {
-  GeneratedAnimationMeta, GeneratedCharacterEntry, GeneratedCharacterManifest,
+  GeneratedAnimationMeta, GeneratedCharacterEntry, GeneratedCharacterManifest, SpriteBounds,
 } from '../types/generatedCharacter.ts';
 import type { AnimationState } from '../types/combat.ts';
 
@@ -48,6 +48,57 @@ const FRAME_RATE: Record<string, number> = {
 };
 
 function pad4(n: number): string { return String(n).padStart(4, '0'); }
+
+export function findVisibleBounds(
+  data: Uint8ClampedArray | Buffer,
+  width: number,
+  height: number,
+  alphaThreshold = 8,
+): SpriteBounds {
+  let minX = width;
+  let minY = height;
+  let maxX = -1;
+  let maxY = -1;
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      if (data[(y * width + x) * 4 + 3] <= alphaThreshold) continue;
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+    }
+  }
+  if (maxX < minX) {
+    return {
+      x: 0, y: 0, width, height, sourceWidth: width, sourceHeight: height,
+    };
+  }
+  return {
+    x: minX,
+    y: minY,
+    width: maxX - minX + 1,
+    height: maxY - minY + 1,
+    sourceWidth: width,
+    sourceHeight: height,
+  };
+}
+
+function measureTextureBounds(source: CanvasImageSource & { width: number; height: number }): SpriteBounds {
+  const { width, height } = source;
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d', { willReadFrequently: true });
+    if (!context) throw new Error('2D canvas unavailable');
+    context.drawImage(source, 0, 0);
+    return findVisibleBounds(context.getImageData(0, 0, width, height).data, width, height);
+  } catch {
+    return {
+      x: 0, y: 0, width, height, sourceWidth: width, sourceHeight: height,
+    };
+  }
+}
 
 // Load a list of {key,url} images through the scene loader, resolving once all
 // have finished (or rejecting on the first hard error).
@@ -183,7 +234,11 @@ export async function loadGeneratedCharacter(
     const tex = scene.textures.exists(`${id}-${state}-0`)
       ? scene.textures.get(`${id}-${state}-0`).getSourceImage()
       : null;
-    if (tex) { animMeta[state].srcW = tex.width; animMeta[state].srcH = tex.height; }
+    if (tex) {
+      animMeta[state].srcW = tex.width;
+      animMeta[state].srcH = tex.height;
+      if (!animMeta[state].fullscreen) animMeta[state].bounds = measureTextureBounds(tex);
+    }
   }
   if (superBackground) {
     const tex = scene.textures.exists(`${superBackground.texturePrefix}-0`)
@@ -212,17 +267,27 @@ export async function loadGeneratedCharacter(
   }
   if (death && !animMeta[5]) {
     aliasFrames(scene, id, 6, 5, 1); // single recoil frame
-    animMeta[5] = { frame_cnt: 1, frame_rate: 4, playback: 'forward' };
+    animMeta[5] = {
+      frame_cnt: 1,
+      frame_rate: 4,
+      playback: 'forward',
+      srcW: death.srcW,
+      srcH: death.srcH,
+      bounds: death.bounds,
+    };
   }
 
   // Source dimensions (all frames share a size) for the fighter's scale/offset.
   const idleSrc = scene.textures.get(`${id}-0-0`).getSourceImage();
+  const figure = resolveGeneratedFigureTexture(id, animMeta);
+  const figureSource = scene.textures.get(figure).getSourceImage();
   const entry = {
     id,
     name: manifest.name || id.toUpperCase(),
     cn: manifest.cn || manifest.name || id,
     portrait: manifest.portrait && scene.textures.exists(portraitKey) ? portraitKey : `${id}-0-0`,
-    figure: resolveGeneratedFigureTexture(id, animMeta),
+    figure,
+    figureBounds: measureTextureBounds(figureSource),
     srcW: idleSrc.width,
     srcH: idleSrc.height,
     animMeta,

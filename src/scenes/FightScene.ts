@@ -9,6 +9,7 @@ import { SCENE_KEYS } from '../config/game.ts';
 import CollisionWorld from '../combat/CollisionWorld.ts';
 import EffectSystem from '../combat/effects/EffectSystem.ts';
 import CombatDebugOverlay from '../combat/debug/CombatDebugOverlay.ts';
+import { fitVisibleSprite } from '../utils/spriteLayout.ts';
 
 const ROUND_TIME_MS = 60000;
 // Pre-fight ceremony: hold the action while the "Round 1, Fight!" announcer
@@ -561,8 +562,16 @@ export default class FightScene extends Phaser.Scene {
       const poseAnimation = intro || winner.animations.get(STATUS.IDLE);
       const poseFrame = Math.max(0, (poseAnimation?.frame_cnt || 1) - 1);
       const poseKey = `${winner.texturePrefix}-${poseState}-${poseFrame}`;
-      const pose = this.add.image(-80, height + 8, poseKey).setOrigin(0.5, 1).setAlpha(0);
-      const poseScale = Math.min((height * 0.91) / pose.height, (width * 0.47) / pose.width);
+      const pose = this.add.image(-80, height - 10, poseKey).setAlpha(0);
+      const poseLayout = fitVisibleSprite(
+        pose.width,
+        pose.height,
+        winner.entry?.figureBounds,
+        width * 0.47,
+        height * 0.91,
+      );
+      pose.setOrigin(poseLayout.originX, poseLayout.originY);
+      const poseScale = poseLayout.scale;
       pose.setScale(poseScale * 0.82);
       result.add(pose);
 

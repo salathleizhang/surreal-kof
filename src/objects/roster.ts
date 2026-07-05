@@ -44,6 +44,7 @@ export function getCharacter(key) {
       cls: GeneratedFighter,
       portrait: g.portrait,
       figure: g.figure,
+      figureBounds: g.figureBounds,
       generated: true,
     };
   }

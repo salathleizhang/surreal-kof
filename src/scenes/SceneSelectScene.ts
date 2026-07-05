@@ -7,7 +7,6 @@ import { PIXEL_FONT, PIXEL_FONT_CN } from '../fonts.ts';
 import { setVerticalGradient } from '../utils/text.ts';
 import { playUi, startMenuBgm } from '../audio.ts';
 import { SCENE_KEYS } from '../config/game.ts';
-import { fitVisibleSprite } from '../utils/spriteLayout.ts';
 
 const { JustDown } = Phaser.Input.Keyboard;
 const { KeyCodes } = Phaser.Input.Keyboard;
@@ -198,11 +197,11 @@ export default class SceneSelectScene extends Phaser.Scene {
 
       const figure = this.add
         .image(homeX, boxY + boxH, figureTexture)
+        .setOrigin(0.5, 1)
         .setDepth(3);
       const src = this.textures.get(figureTexture).getSourceImage();
-      const layout = fitVisibleSprite(src.width, src.height, char.figureBounds, boxW, boxH);
-      figure.setOrigin(layout.originX, layout.originY);
-      figure.setScale(flip ? -layout.scale : layout.scale, layout.scale);
+      const scale = Math.min(boxW / src.width, boxH / src.height);
+      figure.setScale(flip ? -scale : scale, scale);
 
       const name = this.add
         .text(id === 0 ? 30 : width - 30, 64, char.cn || char.name, {

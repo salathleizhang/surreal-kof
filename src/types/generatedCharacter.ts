@@ -32,16 +32,6 @@ export interface GeneratedCharacterManifest {
 export interface GeneratedAnimationMeta extends AnimationDefinition {
   srcW?: number;
   srcH?: number;
-  bounds?: SpriteBounds;
-}
-
-export interface SpriteBounds {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  sourceWidth: number;
-  sourceHeight: number;
 }
 
 export interface GeneratedBackgroundMeta extends GeneratedAnimationMeta {
@@ -54,7 +44,6 @@ export interface GeneratedCharacterEntry {
   cn: string;
   portrait: string;
   figure: string;
-  figureBounds?: SpriteBounds;
   srcW: number;
   srcH: number;
   animMeta: Record<string, GeneratedAnimationMeta>;

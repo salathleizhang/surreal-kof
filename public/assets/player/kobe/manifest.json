@@ -4,7 +4,7 @@
   "cn": "科比",
   "summary": "篮球巨星风格格斗角色，拳脚近战后接后仰跳投终结。",
   "base": "assets/player/kobe/base.png",
-  "portrait": "assets/player/kobe/idle/0001.png",
+  "portrait": "assets/player/kobe/portrait.png",
   "anims": {
     "idle": {
       "engineState": 0,

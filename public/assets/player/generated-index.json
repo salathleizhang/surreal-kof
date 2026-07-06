@@ -17,28 +17,28 @@
     "id": "caixukun",
     "name": "CAI XUKUN",
     "cn": "蔡徐坤",
-    "portrait": "assets/player/caixukun/idle/0001.png",
+    "portrait": "assets/player/caixukun/portrait.png",
     "manifest": "assets/player/caixukun/manifest.json"
   },
   {
     "id": "fengge-wangming-tianya",
     "name": "FENGGE WANGMING TIANYA",
     "cn": "峰哥亡命天涯",
-    "portrait": "assets/player/fengge-wangming-tianya/idle/0001.png",
+    "portrait": "assets/player/fengge-wangming-tianya/portrait.png",
     "manifest": "assets/player/fengge-wangming-tianya/manifest.json"
   },
   {
     "id": "speed",
     "name": "SPEED",
     "cn": "speed",
-    "portrait": "assets/player/speed/idle/0001.png",
+    "portrait": "assets/player/speed/portrait.png",
     "manifest": "assets/player/speed/manifest.json"
   },
   {
     "id": "kobe",
     "name": "KOBE",
     "cn": "科比",
-    "portrait": "assets/player/kobe/idle/0001.png",
+    "portrait": "assets/player/kobe/portrait.png",
     "manifest": "assets/player/kobe/manifest.json"
   }
 ]

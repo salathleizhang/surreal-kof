@@ -4,7 +4,7 @@
   "cn": "蔡徐坤",
   "summary": "ikun 唱跳rap篮球，全能舞担",
   "base": "assets/player/caixukun/base.png",
-  "portrait": "assets/player/caixukun/idle/0001.png",
+  "portrait": "assets/player/caixukun/portrait.png",
   "anims": {
     "walk": {
       "engineState": 1,

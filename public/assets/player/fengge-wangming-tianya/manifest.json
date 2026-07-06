@@ -4,7 +4,7 @@
   "cn": "峰哥亡命天涯",
   "summary": "亡命天涯的狠角色，近身拳脚压迫，靠情绪爆发打出大招。",
   "base": "assets/player/fengge-wangming-tianya/base.png",
-  "portrait": "assets/player/fengge-wangming-tianya/idle/0001.png",
+  "portrait": "assets/player/fengge-wangming-tianya/portrait.png",
   "anims": {
     "idle": {
       "engineState": 0,

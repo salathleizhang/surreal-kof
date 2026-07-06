@@ -4,7 +4,7 @@
   "cn": "speed",
   "summary": "高速整活型选手，用拳击和后空翻拉开节奏，大招以 siu 收尾。",
   "base": "assets/player/speed/base.png",
-  "portrait": "assets/player/speed/idle/0001.png",
+  "portrait": "assets/player/speed/portrait.png",
   "anims": {
     "idle": {
       "engineState": 0,

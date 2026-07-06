@@ -10,7 +10,7 @@
     "id": "chenmian",
     "name": "CHEN MIAN",
     "cn": "陈冕",
-    "portrait": "assets/player/chenmian/idle/0001.png",
+    "portrait": "assets/player/chenmian/portrait.png",
     "manifest": "assets/player/chenmian/manifest.json"
   },
   {

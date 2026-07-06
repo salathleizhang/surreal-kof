@@ -4,15 +4,8 @@
   "cn": "陈冕",
   "summary": "金钱主宰，撒币为攻",
   "base": "assets/player/chenmian/base.png",
-  "portrait": "assets/player/chenmian/idle/0001.png",
+  "portrait": "assets/player/chenmian/portrait.png",
   "anims": {
-    "walk": {
-      "engineState": 1,
-      "dir": "assets/player/chenmian/walk",
-      "frames": 8,
-      "playback": "loop",
-      "matte": true
-    },
     "idle": {
       "engineState": 0,
       "dir": "assets/player/chenmian/idle",
@@ -20,24 +13,58 @@
       "playback": "loop",
       "matte": true
     },
+    "walk": {
+      "engineState": 1,
+      "dir": "assets/player/chenmian/walk",
+      "frames": 8,
+      "playback": "loop",
+      "matte": true
+    },
+    "jump": {
+      "engineState": 3,
+      "dir": "assets/player/chenmian/jump",
+      "frames": 8,
+      "frameRate": 8,
+      "playback": "forward",
+      "matte": true
+    },
+    "guard": {
+      "engineState": 10,
+      "dir": "assets/player/chenmian/guard",
+      "frames": 8,
+      "frameRate": 8,
+      "playback": "hold",
+      "matte": true
+    },
+    "hit": {
+      "engineState": 5,
+      "dir": "assets/player/chenmian/hit",
+      "frames": 8,
+      "frameRate": 10,
+      "playback": "forward",
+      "matte": true
+    },
     "attack1": {
       "engineState": 4,
       "dir": "assets/player/chenmian/attack1",
       "frames": 7,
-      "playback": "yoyo",
+      "frameRate": 10,
+      "playback": "forward",
       "matte": true
     },
     "attack2": {
       "engineState": "attack2",
       "dir": "assets/player/chenmian/attack2",
-      "frames": 7,
-      "playback": "yoyo",
+      "frames": 9,
+      "frameRate": 10,
+      "playback": "forward",
       "matte": true
     },
     "intro": {
       "engineState": "intro",
       "dir": "assets/player/chenmian/intro",
       "frames": 8,
+      "frameRate": 10,
       "playback": "forward",
       "matte": true
     },
@@ -45,17 +72,17 @@
       "engineState": 6,
       "dir": "assets/player/chenmian/death",
       "frames": 10,
+      "frameRate": 8,
       "playback": "hold",
       "matte": true
     },
     "super": {
       "engineState": "super",
       "dir": "assets/player/chenmian/super",
-      "frames": 25,
+      "frames": 16,
+      "frameRate": 16,
       "playback": "forward",
-      "matte": false,
-      "frameRate": 10,
-      "fullscreen": true
+      "matte": true
     }
   },
   "moves": {
@@ -72,5 +99,39 @@
       "damage": 40
     }
   },
-  "createdAt": 1782618214050
+  "createdAt": 1782618214050,
+  "superBackground": {
+    "dir": "assets/player/chenmian/super-background",
+    "frames": 25,
+    "frameRate": 10,
+    "playback": "forward",
+    "matte": false,
+    "fullscreen": true
+  },
+  "combat": {
+    "skills": {
+      "attack2": {
+        "ai": { "range": 900 },
+        "events": [
+          {
+            "id": "attack2-throw",
+            "frame": 30,
+            "type": "projectile",
+            "projectile": {
+              "forward": 20,
+              "y": 90,
+              "width": 70,
+              "height": 50,
+              "speed": 700,
+              "lifeMs": 900,
+              "damage": 22,
+              "hitstop": 4,
+              "spawnEffect": "swing",
+              "visual": { "tint": 2600544, "scale": 1.3 }
+            }
+          }
+        ]
+      }
+    }
+  }
 }

@@ -24,10 +24,17 @@ public/assets/player/*/*
 # Runtime files for generated fighters.
 !public/assets/player/*/manifest.json
 !public/assets/player/*/base.png
+!public/assets/player/*/portrait.png
 !public/assets/player/*/idle/
 !public/assets/player/*/idle/*.png
 !public/assets/player/*/walk/
 !public/assets/player/*/walk/*.png
+!public/assets/player/*/jump/
+!public/assets/player/*/jump/*.png
+!public/assets/player/*/guard/
+!public/assets/player/*/guard/*.png
+!public/assets/player/*/hit/
+!public/assets/player/*/hit/*.png
 !public/assets/player/*/attack1/
 !public/assets/player/*/attack1/*.png
 !public/assets/player/*/attack2/
@@ -38,3 +45,5 @@ public/assets/player/*/*
 !public/assets/player/*/death/*.png
 !public/assets/player/*/super/
 !public/assets/player/*/super/*.png
+!public/assets/player/*/super-background/
+!public/assets/player/*/super-background/*.png

@@ -32,6 +32,15 @@ export interface GeneratedCharacterManifest {
   combat?: CombatDefinition;
 }
 
+export interface GeneratedCharacterIndexItem {
+  id: string;
+  name?: string;
+  cn?: string;
+  portrait?: string;
+  manifest?: string;
+  playable?: boolean;
+}
+
 export interface GeneratedAnimationMeta extends AnimationDefinition {
   srcW?: number;
   srcH?: number;
@@ -53,4 +62,5 @@ export interface GeneratedCharacterEntry {
   superBackground?: GeneratedBackgroundMeta;
   moves: Record<string, GeneratedMove>;
   combat: CombatDefinition;
+  playable?: boolean;
 }

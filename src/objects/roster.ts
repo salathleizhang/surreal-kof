@@ -13,7 +13,7 @@ export const CHARACTERS = {};
 
 // The grid shown on the MEMBER SELECT screen.
 export const SELECT_GRID = {
-  cols: 5,
+  cols: 6,
   rows: 2,
 };
 
@@ -32,6 +32,7 @@ export function getCharacter(key) {
       portrait: g.portrait,
       figure: g.figure,
       generated: true,
+      playable: g.playable !== false,
     };
   }
   return null;
@@ -41,7 +42,8 @@ export function getCharacter(key) {
 export function allCharacterKeys() {
   const builtInKeys = Object.keys(CHARACTERS);
   const generatedKeys = listGeneratedCharacterIds()
-    .filter((key) => !Object.prototype.hasOwnProperty.call(CHARACTERS, key));
+    .filter((key) => !Object.prototype.hasOwnProperty.call(CHARACTERS, key))
+    .filter((key) => getGeneratedCharacter(key)?.playable !== false);
   return [...builtInKeys, ...generatedKeys];
 }
 
@@ -50,5 +52,7 @@ export function allCharacterKeys() {
 // button). Built-in roster first, otherwise whatever fighter was generated
 // first this session.
 export function getDefaultCharacterKey() {
-  return Object.keys(CHARACTERS)[0] || listGeneratedCharacterIds()[0] || null;
+  return Object.keys(CHARACTERS)[0]
+    || listGeneratedCharacterIds().find((key) => getGeneratedCharacter(key)?.playable !== false)
+    || null;
 }

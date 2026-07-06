@@ -13,7 +13,8 @@ import {
   registerGeneratedCharacter,
 } from '../state/generatedCharacters.ts';
 import type {
-  GeneratedAnimationMeta, GeneratedCharacterEntry, GeneratedCharacterManifest,
+  GeneratedAnimationMeta, GeneratedCharacterEntry, GeneratedCharacterIndexItem,
+  GeneratedCharacterManifest,
 } from '../types/generatedCharacter.ts';
 import type { AnimationState } from '../types/combat.ts';
 
@@ -120,7 +121,8 @@ export async function loadGeneratedCharacter(
   progress?: LoadProgress,
 ): Promise<GeneratedCharacterEntry | null> {
   const { id } = manifest;
-  if (hasGeneratedCharacter(id)) return getGeneratedCharacter(id);
+  const existing = getGeneratedCharacter(id);
+  if (existing && existing.playable !== false) return existing;
 
   // Build the full frame list across every animation.
   const entries: Array<{ key: string; url: string }> = [];
@@ -240,8 +242,38 @@ export async function loadGeneratedCharacter(
     superBackground,
     moves: manifest.moves || {},
     combat: manifest.combat || {},
+    playable: true,
   };
   return registerGeneratedCharacter(entry);
+}
+
+// Portrait-only entries reserve a roster slot before their combat assets exist.
+// They can be browsed on the select screen but are explicitly non-playable.
+async function loadPortraitPlaceholder(
+  scene: any,
+  item: GeneratedCharacterIndexItem,
+  base = '',
+  progress?: LoadProgress,
+): Promise<GeneratedCharacterEntry | null> {
+  if (!item.id || !item.portrait) return null;
+  if (hasGeneratedCharacter(item.id)) return getGeneratedCharacter(item.id);
+
+  const portraitKey = `${item.id}-portrait`;
+  await loadImages(scene, [{ key: portraitKey, url: `${base}${item.portrait}` }], progress);
+  const source = scene.textures.get(portraitKey).getSourceImage();
+  return registerGeneratedCharacter({
+    id: item.id,
+    name: item.name || item.id.toUpperCase(),
+    cn: item.cn || item.name || item.id,
+    portrait: portraitKey,
+    figure: portraitKey,
+    srcW: source.width,
+    srcH: source.height,
+    animMeta: {},
+    moves: {},
+    combat: {},
+    playable: false,
+  });
 }
 
 // Fetch the generated-character index and load every previously-made fighter so
@@ -251,10 +283,10 @@ export async function loadGeneratedIndex(
   base = '',
   progress?: LoadProgress,
 ): Promise<GeneratedCharacterEntry[]> {
-  let index: Array<{ manifest: string }> = [];
+  let index: GeneratedCharacterIndexItem[] = [];
   try {
     const resp = await fetch(`${base}assets/player/generated-index.json`, { cache: 'no-store' });
-    if (resp.ok) index = await resp.json() as Array<{ manifest: string }>;
+    if (resp.ok) index = await resp.json() as GeneratedCharacterIndexItem[];
   } catch { index = []; }
 
   if (!Array.isArray(index) || !index.length) return [];
@@ -262,6 +294,7 @@ export async function loadGeneratedIndex(
   // Manifest requests are independent network operations. Fetch them together,
   // then feed their image frames through Phaser's single loader in sequence.
   const manifests = await Promise.all(index.map(async (item): Promise<GeneratedCharacterManifest | null> => {
+    if (!item.manifest) return null;
     try {
       const response = await fetch(`${base}${item.manifest}`, { cache: 'no-store' });
       return response.ok ? await response.json() as GeneratedCharacterManifest : null;
@@ -270,15 +303,21 @@ export async function loadGeneratedIndex(
     }
   }));
 
-  progress?.addTotal?.(manifests.reduce((total, manifest) => (
-    total + (manifest ? countManifestImages(manifest) : 0)
-  ), 0));
+  progress?.addTotal?.(manifests.reduce((total, manifest, indexPosition) => {
+    if (manifest) return total + countManifestImages(manifest);
+    return total + (index[indexPosition]?.portrait ? 1 : 0);
+  }, 0));
 
   const loaded: GeneratedCharacterEntry[] = [];
-  for (const manifest of manifests) {
-    if (!manifest) continue;
+  for (let i = 0; i < index.length; i += 1) {
+    const item = index[i];
+    const manifest = manifests[i];
     try {
-      const entry = await loadGeneratedCharacter(scene, manifest, base, progress);
+      const entry = manifest
+        ? await loadGeneratedCharacter(scene, manifest, base, progress)
+        : item.playable === false
+          ? await loadPortraitPlaceholder(scene, item, base, progress)
+          : null;
       if (entry) loaded.push(entry);
     } catch { /* skip a broken entry, keep the rest */ }
   }

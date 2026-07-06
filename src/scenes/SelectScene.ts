@@ -232,11 +232,12 @@ export default class SelectScene extends Phaser.Scene {
         .setDepth(4);
 
       const cell = {
-        charKey, x, y, rect, portrait: null,
+        charKey, x, y, rect, portrait: null, badge: null,
       };
       this.paintCell(cell);
       this.gridObjects.push(rect);
       if (cell.portrait) this.gridObjects.push(cell.portrait);
+      if (cell.badge) this.gridObjects.push(cell.badge);
       return cell;
     });
   }
@@ -245,6 +246,7 @@ export default class SelectScene extends Phaser.Scene {
   // character's portrait (if its texture is loaded).
   paintCell(cell) {
     if (cell.portrait) { cell.portrait.destroy(); cell.portrait = null; }
+    if (cell.badge) { cell.badge.destroy(); cell.badge = null; }
 
     if (cell.charKey === ADD_KEY) {
       cell.portrait = this.add
@@ -261,6 +263,19 @@ export default class SelectScene extends Phaser.Scene {
       cell.portrait = this.addFittedPortrait(
         ch.portrait, cell.x + 5, cell.y + 5, CELL - 10, CELL - 10, 5,
       );
+      if (ch.playable === false) {
+        cell.portrait.setAlpha(0.82);
+        cell.badge = this.add
+          .text(cell.x + CELL / 2, cell.y + CELL - 5, '制作中', {
+            fontFamily: CN_FONT,
+            fontSize: '14px',
+            color: '#ffe889',
+            backgroundColor: '#09101fd9',
+            padding: { x: 5, y: 2 },
+          })
+          .setOrigin(0.5, 1)
+          .setDepth(6);
+      }
     }
   }
 
@@ -395,7 +410,11 @@ export default class SelectScene extends Phaser.Scene {
     this.tweens.killTweensOf(fig.figure);
     fig.figure.x = fig.homeX;
     this.applyFigureTexture(id);
-    fig.status.setText(this.p[id].confirmed ? 'OK!' : '');
+  }
+
+  isPlayableKey(key) {
+    if (key === ADD_KEY || key == null) return false;
+    return getCharacter(key)?.playable !== false;
   }
 
   // Make the CPU look like a human at the select screen: hop around the grid a
@@ -409,10 +428,9 @@ export default class SelectScene extends Phaser.Scene {
 
     const step = () => {
       if (this.starting || cpu.confirmed) return;
-      const onEmptyCell = this.cells[this.cellIndex(cpu)].charKey == null
-        || this.cells[this.cellIndex(cpu)].charKey === ADD_KEY;
-      if (movesLeft > 0 || onEmptyCell) {
-        // Never settle on the "+" button or a still-empty slot — hop again.
+      const onUnavailableCell = !this.isPlayableKey(this.cells[this.cellIndex(cpu)].charKey);
+      if (movesLeft > 0 || onUnavailableCell) {
+        // Never settle on "+", an empty slot, or a portrait-only future fighter.
         movesLeft = Math.max(0, movesLeft - 1);
         this.cpuRandomMove(id);
         this.time.delayedCall(Phaser.Math.Between(220, 440), step);
@@ -468,6 +486,7 @@ export default class SelectScene extends Phaser.Scene {
     if (key === ADD_KEY || key == null) {
       fig.figure.setVisible(false);
       fig.name.setText('新建角色');
+      fig.status.setText('');
       return;
     }
 
@@ -476,6 +495,7 @@ export default class SelectScene extends Phaser.Scene {
     if (!char || !figureTexture || !this.textures.exists(figureTexture)) {
       fig.figure.setVisible(false);
       fig.name.setText(char ? char.cn || char.name : '');
+      fig.status.setText('');
       return;
     }
 
@@ -486,6 +506,7 @@ export default class SelectScene extends Phaser.Scene {
     fig.figure.setOrigin(0.5, 1);
     fig.figure.setScale(fig.flip ? -scale : scale, scale);
     fig.name.setText(char.cn || char.name);
+    fig.status.setText(char.playable === false ? 'SOON' : this.p[id].confirmed ? 'OK!' : '');
   }
 
   // Switching characters: slide the figure left, swap to the newly hovered
@@ -577,6 +598,11 @@ export default class SelectScene extends Phaser.Scene {
         // The "+" cell (and any still-empty slot) launches the creation flow
         // instead of locking a pick.
         this.openCreateModal();
+      } else if (!this.isPlayableKey(key)) {
+        // Future fighters remain visible for roster planning but cannot enter
+        // combat until their manifest and animation frames are available.
+        this.refreshFigure(id);
+        playUi(this, 'cancel');
       } else {
         player.confirmed = true;
         this.refreshFigure(id); // snap home + show OK!
@@ -597,7 +623,7 @@ export default class SelectScene extends Phaser.Scene {
       const key = this.cells[this.cellIndex(player)].charKey;
       // Defensive fallback only — the CPU never settles on the "+" cell or an
       // empty slot (see maybeStartCpuSelection), and humans can't confirm there.
-      return key === ADD_KEY || key == null ? getDefaultCharacterKey() : key;
+      return this.isPlayableKey(key) ? key : getDefaultCharacterKey();
     });
 
     this.scene.start(SCENE_KEYS.STAGE_SELECT, { selections, mode: this.mode });

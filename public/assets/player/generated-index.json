@@ -40,5 +40,33 @@
     "cn": "科比",
     "portrait": "assets/player/kobe/portrait.png",
     "manifest": "assets/player/kobe/manifest.json"
+  },
+  {
+    "id": "elon-musk",
+    "name": "ELON MUSK",
+    "cn": "马斯克",
+    "portrait": "assets/player/elon-musk/portrait.png",
+    "playable": false
+  },
+  {
+    "id": "donald-trump",
+    "name": "DONALD TRUMP",
+    "cn": "特朗普",
+    "portrait": "assets/player/donald-trump/portrait.png",
+    "playable": false
+  },
+  {
+    "id": "mark-zuckerberg",
+    "name": "MARK ZUCKERBERG",
+    "cn": "小扎",
+    "portrait": "assets/player/mark-zuckerberg/portrait.png",
+    "playable": false
+  },
+  {
+    "id": "doubao",
+    "name": "DOUBAO",
+    "cn": "豆包",
+    "portrait": "assets/player/doubao/portrait.png",
+    "playable": false
   }
 ]

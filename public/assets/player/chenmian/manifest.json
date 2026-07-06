@@ -16,7 +16,8 @@
     "walk": {
       "engineState": 1,
       "dir": "assets/player/chenmian/walk",
-      "frames": 8,
+      "frames": 12,
+      "frameRate": 12,
       "playback": "loop",
       "matte": true
     },

@@ -1,4 +1,6 @@
-import type { AnimationDefinition, AnimationState, CombatDefinition } from './combat.ts';
+import type {
+  AnimationDefinition, AnimationState, CombatDefinition, DashDefinition,
+} from './combat.ts';
 
 export type PlaybackMode = 'loop' | 'forward' | 'yoyo' | 'hold';
 
@@ -10,6 +12,7 @@ export interface GeneratedAnimationManifest {
   frameRate?: number;
   fullscreen?: boolean;
   matte?: boolean;
+  dash?: DashDefinition;
 }
 
 export interface GeneratedMove {

@@ -143,6 +143,7 @@ export async function loadGeneratedCharacter(
       // drawn covering the stage rather than anchored to the hitbox.
       fullscreen: !!info.fullscreen,
     };
+    if (info.dash) animMeta[state].dash = info.dash;
   }
 
   // The generated square portrait is used only by the character-select grid;

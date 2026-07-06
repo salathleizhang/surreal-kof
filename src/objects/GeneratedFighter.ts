@@ -76,6 +76,7 @@ export default class GeneratedFighter extends Fighter {
       if (state === STATUS.SUPER && entry.superBackground) {
         animation.background = { ...entry.superBackground };
       }
+      if (meta.dash) animation.dash = meta.dash;
       this.animations.set(state, animation);
     }
   }

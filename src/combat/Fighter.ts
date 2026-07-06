@@ -430,12 +430,13 @@ export default class Fighter {
         this.sprite.setDepth(10);
         this.sprite.y = this.y + (animation.offset_y || 0);
         const offsetX = animation.offset_x || 0;
+        const anchorX = animation.dash ? this.dashAnchorX(animation.dash, playback.frame) : this.x;
         if (this.direction > 0) {
           this.sprite.setScale(animation.scale, animation.scale);
-          this.sprite.x = this.x + offsetX;
+          this.sprite.x = anchorX + offsetX;
         } else {
           this.sprite.setScale(-animation.scale, animation.scale);
-          this.sprite.x = this.x + this.width - offsetX;
+          this.sprite.x = anchorX + this.width - offsetX;
         }
       }
 
@@ -471,6 +472,20 @@ export default class Fighter {
       }
     }
     this.frame_current_cnt += 1;
+  }
+
+  // Interpolates the sprite's x anchor from the fighter's own stance toward a
+  // standoff distance beside the opponent, over [fromFrame, toFrame] of the
+  // authored clip, then holds there. Before fromFrame (or with no opponent) it
+  // stays at the fighter's own position, unchanged from the non-dash path.
+  dashAnchorX(dash: NonNullable<AnimationDefinition['dash']>, frame: number): number {
+    const opponent = this.scene.players && this.scene.players.find((entry: Fighter) => entry !== this);
+    if (!opponent) return this.x;
+    const { fromFrame, toFrame, standoff = 90 } = dash;
+    const span = toFrame - fromFrame;
+    const t = span > 0 ? Math.min(1, Math.max(0, (frame - fromFrame) / span)) : (frame >= fromFrame ? 1 : 0);
+    const targetX = opponent.x - this.direction * standoff;
+    return this.x + (targetX - this.x) * t;
   }
 
   renderAnimationBackground(background: NonNullable<AnimationDefinition['background']>): void {

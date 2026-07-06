@@ -127,6 +127,12 @@ export interface CombatDefinition {
   skills?: Record<string, SkillDefinition>;
 }
 
+export interface DashDefinition {
+  fromFrame: number;
+  toFrame: number;
+  standoff?: number;
+}
+
 export interface AnimationDefinition {
   frame_cnt: number;
   frame_rate: number;
@@ -138,6 +144,11 @@ export interface AnimationDefinition {
   offset_y?: number;
   scale?: number;
   background?: AnimationLayerDefinition;
+  // Slides the non-fullscreen sprite from the fighter's own stance toward the
+  // opponent between two sprite-frame indices, then holds there. Lets a cinematic
+  // super (foreground art authored in-place) close the distance without the
+  // combat/AI system actually moving the fighter.
+  dash?: DashDefinition;
 }
 
 export interface AnimationLayerDefinition {

@@ -73,6 +73,7 @@ export default class Fighter {
   hp: number;
   hpGreen: number;
   hpRed: number;
+  comboHits: number;
   maxRage: number;
   rage: number;
   isAi: boolean;
@@ -116,6 +117,7 @@ export default class Fighter {
     this.hp = this.maxHp;
     this.hpGreen = this.maxHp;
     this.hpRed = this.maxHp;
+    this.comboHits = 0;
     this.maxRage = this.stats.maxRage ?? DEFAULT_MAX_RAGE;
     this.rage = 0;
 
@@ -341,7 +343,8 @@ export default class Fighter {
   receiveHit(hit: HitData = {}): void {
     if (this.isDead()) return;
     const guarding = this.combatState === FIGHTER_STATE.GUARDING && this.status === STATUS.GUARD;
-    const damage = resolveDamage(hit.damage, this.hp, guarding);
+    if (!guarding) this.comboHits += 1;
+    const damage = resolveDamage(hit.damage, this.hp, guarding, this.comboHits);
     if (guarding) {
       // A held guard absorbs the hit without damage, hitstun, knockback or a
       // hurt voice. Short hitstop/flash still gives the attacker clear contact
@@ -388,6 +391,7 @@ export default class Fighter {
     this.combatState = FIGHTER_STATE.DEAD;
     this.frame_current_cnt = 0;
     this.vx = 0;
+    this.comboHits = 0;
     playDeathVoice(this.scene);
   }
 
@@ -520,6 +524,7 @@ export default class Fighter {
     this.combatState = FIGHTER_STATE.NEUTRAL;
     this.frame_current_cnt = 0;
     this.vx = 0;
+    this.comboHits = 0;
   }
 
   playbackFor(animation: AnimationDefinition): { frame: number; finished: boolean } {

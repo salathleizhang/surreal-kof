@@ -1,5 +1,5 @@
 import {
-  CHARACTER_SCALE, DEFAULT_MAX_RAGE, DEFAULT_RAGE_GAIN_PER_HIT, STATUS,
+  CHARACTER_SCALE, DEFAULT_DAMAGE, DEFAULT_MAX_RAGE, DEFAULT_RAGE_GAIN_PER_HIT, STATUS,
 } from '../../config/combat.ts';
 import type { CombatDefinition, SkillDefinition } from '../../types/combat.ts';
 import type { GeneratedCharacterEntry } from '../../types/generatedCharacter.ts';
@@ -43,7 +43,7 @@ export function createGeneratedCombatDefinition(
         frame: 18,
         type: 'hitbox',
         box: { x: bodyWidth, y: 40 * S, width: 100 * S, height: 20 * S },
-        hit: { damage: moves.attack1?.damage || 20, hitstop: 4 },
+        hit: { damage: moves.attack1?.damage || DEFAULT_DAMAGE.attack1, hitstop: 4 },
         onWhiff: 'swing',
       }],
     },
@@ -60,7 +60,7 @@ export function createGeneratedCombatDefinition(
         frame: 'apex',
         type: 'hitbox',
         box: { x: bodyWidth, y: 20 * S, width: 130 * S, height: 70 * S },
-        hit: { damage: moves.attack2?.damage || 24, hitstop: 4 },
+        hit: { damage: moves.attack2?.damage || DEFAULT_DAMAGE.attack2, hitstop: 4 },
         onWhiff: 'swing',
       }],
     },
@@ -77,7 +77,12 @@ export function createGeneratedCombatDefinition(
         id: 'super-hit',
         frame: 'apex',
         type: 'direct-hit',
-        hit: { damage: 'all', hitstop: 4, effect: 'hit-spark', rageGain: 0 },
+        hit: {
+          damage: moves.super?.damage || DEFAULT_DAMAGE.super,
+          hitstop: 4,
+          effect: 'hit-spark',
+          rageGain: 0,
+        },
       }],
     },
   };

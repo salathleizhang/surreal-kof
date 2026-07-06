@@ -20,6 +20,7 @@ import { randomUUID } from 'node:crypto';
 import { PNG } from 'pngjs';
 import { runStudio } from './mule.ts';
 import { matteFile } from './matte.ts';
+import { DEFAULT_DAMAGE } from '../src/config/combat.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = join(__dirname, '..', 'public');
@@ -167,9 +168,9 @@ function randomMoveName(key) {
 
 function buildMoves() {
   return {
-    attack1: { name: randomMoveName('attack1'), damage: 20 },
-    attack2: { name: randomMoveName('attack2'), damage: 24 },
-    super: { name: randomMoveName('super'), damage: 40 },
+    attack1: { name: randomMoveName('attack1'), damage: DEFAULT_DAMAGE.attack1 },
+    attack2: { name: randomMoveName('attack2'), damage: DEFAULT_DAMAGE.attack2 },
+    super: { name: randomMoveName('super'), damage: DEFAULT_DAMAGE.super },
   };
 }
 

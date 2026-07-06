@@ -28,5 +28,21 @@ export const FIGHTER_STATE = Object.freeze({
 export const DEFAULT_MAX_RAGE = 100;
 export const DEFAULT_RAGE_GAIN_PER_HIT = 25;
 
+// Baseline per-move damage used whenever a character's manifest doesn't
+// override a move (manifest `moves.<id>.damage` always wins when present).
+export const DEFAULT_DAMAGE = Object.freeze({
+  attack1: 12,
+  attack2: 16,
+  super: 30,
+});
+
+// Consecutive-hit damage decay applied while a defender has not yet returned
+// to NEUTRAL. Index 0 = 1st hit in the chain (no decay); multiplier floors
+// out at the last array value for any hit count beyond the array length.
+export const COMBO_DECAY = Object.freeze({
+  multipliers: [1, 0.85, 0.7, 0.6, 0.5],
+  floor: 0.5,
+});
+
 // Scales fighter art, hitboxes, reach and floor placement as one unit.
 export const CHARACTER_SCALE = 1.6;

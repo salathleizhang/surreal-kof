@@ -38,17 +38,17 @@ for (let outIndex = 0; outIndex < selected.length; outIndex += 1) {
   }
   if (maxX < 0) throw new Error(`no foreground in ${files[selected[outIndex]]}`);
 
-  let footSum = 0;
-  let footCount = 0;
-  for (let y = Math.max(minY, maxY - 28); y <= maxY; y += 1) {
+  let footMinX = src.width;
+  let footMaxX = -1;
+  for (let y = Math.max(minY, maxY - 90); y <= maxY; y += 1) {
     for (let x = minX; x <= maxX; x += 1) {
       const i = (y * src.width + x) * 4;
       if (!isForeground(src.data, i)) continue;
-      footSum += x;
-      footCount += 1;
+      footMinX = Math.min(footMinX, x);
+      footMaxX = Math.max(footMaxX, x);
     }
   }
-  const footX = footCount ? footSum / footCount : (minX + maxX) / 2;
+  const footX = footMaxX >= 0 ? (footMinX + footMaxX) / 2 : (minX + maxX) / 2;
   const t = outIndex / (selected.length - 1);
   const scale = 1 + 0.12 * t;
   const anchorX = 280;

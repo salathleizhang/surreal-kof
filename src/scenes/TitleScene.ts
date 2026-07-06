@@ -80,7 +80,7 @@ export default class TitleScene extends Phaser.Scene {
     });
 
     this.add
-      .text(width / 2, height - 40, '1P: WASD + G H J    2P: ARROWS + < > ?    GUARD: DOWN + BACK', {
+      .text(width / 2, height - 40, '1P: WASD + J K L    2P: ARROWS + 1 2 3    GUARD: DOWN + BACK', {
         fontFamily: PIXEL_FONT,
         fontSize: '12px',
         color: '#aabbcc',

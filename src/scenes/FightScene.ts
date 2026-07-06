@@ -4,6 +4,7 @@ import { getCharacter, DEFAULT_CHARACTER } from '../objects/roster.ts';
 import { getStage } from '../data/stages.ts';
 import { getWinnerQuote } from '../data/winnerQuotes.ts';
 import { PIXEL_FONT, PIXEL_FONT_CN } from '../fonts.ts';
+import { setVerticalGradient } from '../utils/text.ts';
 import { playUi, stopMenuBgm } from '../audio.ts';
 import { SCENE_KEYS } from '../config/game.ts';
 import CollisionWorld from '../combat/CollisionWorld.ts';
@@ -577,21 +578,21 @@ export default class FightScene extends Phaser.Scene {
         .text(width * 0.58, 130, 'WINNER', {
           fontFamily: PIXEL_FONT,
           fontSize: '70px',
-          color: '#ffffff',
           stroke: '#7d0016',
           strokeThickness: 10,
         })
         .setAlpha(0);
+      setVerticalGradient(winnerLabel, ['#fff7c0', '#ffd23f', '#b8741a']);
       const name = this.add
         .text(width * 0.58, 250, characterName, {
           fontFamily: PIXEL_FONT_CN,
           fontSize: '34px',
           fontStyle: 'bold',
-          color: '#ffcc33',
           stroke: '#000000',
           strokeThickness: 6,
         })
         .setAlpha(0);
+      setVerticalGradient(name, ['#fff4d6', '#ffcc33', '#a86a00']);
       const rule = this.add.rectangle(width * 0.58, 312, width * 0.34, 6, 0xffcc33)
         .setOrigin(0, 0.5)
         .setAlpha(0);
@@ -600,13 +601,14 @@ export default class FightScene extends Phaser.Scene {
           fontFamily: PIXEL_FONT_CN,
           fontSize: '42px',
           fontStyle: 'bold',
-          color: '#ffffff',
-          stroke: '#000000',
-          strokeThickness: 7,
+          stroke: '#3a0d00',
+          strokeThickness: 8,
           lineSpacing: 16,
           wordWrap: { width: width * 0.37, useAdvancedWrap: true },
         })
+        .setScale(1.35)
         .setAlpha(0);
+      setVerticalGradient(quoteLabel, ['#fff7c0', '#ffcc33', '#ff5a1f']);
       result.add([eyebrow, winnerLabel, name, rule, quoteLabel]);
 
       this.tweens.add({
@@ -619,12 +621,25 @@ export default class FightScene extends Phaser.Scene {
         ease: 'Back.easeOut',
       });
       this.tweens.add({
-        targets: [eyebrow, winnerLabel, name, rule, quoteLabel],
+        targets: [eyebrow, winnerLabel, name, rule],
         x: '+=28',
         alpha: 1,
         duration: 300,
         delay: this.tweens.stagger(75, { start: 120 }),
         ease: 'Quad.easeOut',
+      });
+      // The quote gets its own punchier reveal (scale pop + afterglow) since
+      // it's the line the player actually reads and remembers.
+      this.tweens.add({
+        targets: quoteLabel,
+        x: '+=28',
+        scaleX: 1,
+        scaleY: 1,
+        alpha: 1,
+        duration: 380,
+        delay: 420,
+        ease: 'Back.easeOut',
+        onComplete: () => this.pulseQuoteGlow(quoteLabel),
       });
       this.game.canvas.setAttribute('aria-label', `胜者界面：${characterName}，${quote}`);
     } else {
@@ -652,6 +667,21 @@ export default class FightScene extends Phaser.Scene {
 
     this.tweens.add({ targets: result, alpha: 1, duration: 240, ease: 'Quad.easeOut' });
     this.time.delayedCall(520, () => this.armResultExit(result));
+  }
+
+  // Warm breathing glow behind the winner's quote. Only WebGL supports the FX
+  // pipeline the glow relies on, so canvas fallback just skips it.
+  pulseQuoteGlow(quoteLabel) {
+    if (this.game.renderer.type !== Phaser.WEBGL) return;
+    const glow = quoteLabel.postFX.addGlow(0xff9a2e, 0, 0, false, 0.15, 12);
+    this.tweens.add({
+      targets: glow,
+      outerStrength: 2.4,
+      duration: 700,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
   }
 
   armResultExit(result) {

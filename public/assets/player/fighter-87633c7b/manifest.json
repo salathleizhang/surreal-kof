@@ -79,10 +79,11 @@
     "super": {
       "engineState": "super",
       "dir": "assets/player/fighter-87633c7b/super",
-      "frames": 12,
-      "frameRate": 5,
+      "frames": 16,
+      "frameRate": 16,
       "playback": "forward",
-      "matte": true
+      "matte": true,
+      "dash": { "fromFrame": 10, "toFrame": 13, "standoff": 90 }
     }
   },
   "superBackground": {
@@ -103,8 +104,22 @@
       "damage": 24
     },
     "super": {
-      "name": "理解万岁",
-      "damage": 40
+      "name": "真理的锤子",
+      "damage": 50
+    }
+  },
+  "combat": {
+    "skills": {
+      "super": {
+        "events": [
+          {
+            "id": "super-hit",
+            "frame": 208,
+            "type": "direct-hit",
+            "hit": { "damage": 50, "hitstop": 6, "effect": "hit-spark", "rageGain": 0 }
+          }
+        ]
+      }
     }
   },
   "createdAt": 1782610703873

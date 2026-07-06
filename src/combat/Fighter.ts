@@ -29,12 +29,12 @@ const { KeyCodes } = Phaser.Input.Keyboard;
 
 const KEY_LAYOUTS = [
   {
-    up: KeyCodes.W, down: KeyCodes.S, left: KeyCodes.A, right: KeyCodes.D, attack: KeyCodes.G,
-    attack2: KeyCodes.H, special: KeyCodes.J,
+    up: KeyCodes.W, down: KeyCodes.S, left: KeyCodes.A, right: KeyCodes.D, attack: KeyCodes.J,
+    attack2: KeyCodes.K, special: KeyCodes.L,
   },
   {
-    up: KeyCodes.UP, down: KeyCodes.DOWN, left: KeyCodes.LEFT, right: KeyCodes.RIGHT, attack: KeyCodes.COMMA,
-    attack2: KeyCodes.PERIOD, special: KeyCodes.FORWARD_SLASH,
+    up: KeyCodes.UP, down: KeyCodes.DOWN, left: KeyCodes.LEFT, right: KeyCodes.RIGHT, attack: KeyCodes.ONE,
+    attack2: KeyCodes.TWO, special: KeyCodes.THREE,
   },
 ];
 

@@ -99,9 +99,9 @@ export default class SelectScene extends Phaser.Scene {
 
     this.cursorGfx = this.add.graphics().setDepth(15);
 
-    // Small "1P"/"2P"/"CPU" tab that rides above each cursor.
+    // Small "1P"/"2P"/"AI" tab that rides above each cursor.
     this.cursorTags = this.p.map((player, id) => this.add
-      .text(0, 0, player.isCpu ? 'CPU' : `${id + 1}P`, {
+      .text(0, 0, player.isCpu ? 'AI' : `${id + 1}P`, {
         fontFamily: PIXEL_FONT,
         fontSize: '20px',
         fontStyle: 'bold',

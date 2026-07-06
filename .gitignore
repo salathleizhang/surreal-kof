@@ -18,6 +18,12 @@ public/assets/player/*
 !public/assets/player/speed/
 !public/assets/player/kobe/
 
+# Non-playable preview fighters (portrait only) listed in generated-index.json.
+!public/assets/player/donald-trump/
+!public/assets/player/doubao/
+!public/assets/player/mark-zuckerberg/
+!public/assets/player/elon-musk/
+
 # Ignore generated intermediates/previews inside whitelisted fighter folders.
 public/assets/player/*/*
 

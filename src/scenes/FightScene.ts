@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { DEFAULT_RAGE_GAIN_PER_HIT, FIGHTER_STATE, STATUS } from '../config/combat.ts';
-import { getCharacter, DEFAULT_CHARACTER } from '../objects/roster.ts';
+import { getCharacter, getDefaultCharacterKey } from '../objects/roster.ts';
 import { getStage } from '../data/stages.ts';
 import { getWinnerQuote } from '../data/winnerQuotes.ts';
 import { PIXEL_FONT, PIXEL_FONT_CN } from '../fonts.ts';
@@ -44,9 +44,10 @@ export default class FightScene extends Phaser.Scene {
     this.combatEffects = new EffectSystem(this);
     this.combatWorld = new CollisionWorld(this, this.combatEffects);
 
-    // Characters chosen on the select screen (default to Kyo if launched
-    // directly, e.g. during development).
-    const selections = (data && data.selections) || [DEFAULT_CHARACTER, DEFAULT_CHARACTER];
+    // Characters chosen on the select screen (fall back to the first
+    // available fighter if launched directly, e.g. during development).
+    const defaultCharacter = getDefaultCharacterKey();
+    const selections = (data && data.selections) || [defaultCharacter, defaultCharacter];
     // In single-player mode, player 2 is controlled by the AI (1P is the human).
     const mode = (data && data.mode) || 'versus';
     this.mode = mode;
@@ -59,7 +60,7 @@ export default class FightScene extends Phaser.Scene {
 
     this.players = spawns.map((spawn) => {
       const charKey = selections[spawn.id];
-      const char = getCharacter(charKey) || getCharacter(DEFAULT_CHARACTER);
+      const char = getCharacter(charKey) || getCharacter(defaultCharacter);
       const ai = mode === 'single' && spawn.id === 1;
       return new char.cls(this, { ...spawn, ai, charKey });
     });

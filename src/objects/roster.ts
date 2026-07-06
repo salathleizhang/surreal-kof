@@ -1,4 +1,3 @@
-import Kyo from './Kyo.ts';
 import GeneratedFighter from './GeneratedFighter.ts';
 import {
   getGeneratedCharacter, listGeneratedCharacterIds,
@@ -8,27 +7,15 @@ import {
 // Player subclass that implements it, and the texture used for portraits on the
 // select screen (the first idle frame, registered by the PreloadScene).
 //
-// Only Kyo ships with art today; adding a fighter is just another entry here
-// plus its GIFs in the PreloadScene.
-export const CHARACTERS = {
-  kyo: {
-    name: 'KYO KUSANAGI', cn: '草薙京', cls: Kyo, portrait: 'kyo-0-0', figure: 'kyo-0-0',
-  },
-};
+// No fighter ships built-in anymore; every playable character comes from the
+// generated-fighter pipeline (see state/generatedCharacters.ts).
+export const CHARACTERS = {};
 
-// The grid shown on the MEMBER SELECT screen, laid out row by row. Every cell
-// references a key in CHARACTERS; with a single fighter the grid is all Kyo,
-// which still gives the screen its King-of-Fighters look.
+// The grid shown on the MEMBER SELECT screen.
 export const SELECT_GRID = {
   cols: 5,
   rows: 2,
-  cells: [
-    'kyo', 'kyo', 'kyo', 'kyo', 'kyo',
-    'kyo', 'kyo', 'kyo', 'kyo', 'kyo',
-  ],
 };
-
-export const DEFAULT_CHARACTER = 'kyo';
 
 // Unified character lookup: built-in roster first, then any AI-generated fighter
 // loaded at runtime. Returns a select-screen-shaped entry { name, cn, cls,
@@ -56,4 +43,12 @@ export function allCharacterKeys() {
   const generatedKeys = listGeneratedCharacterIds()
     .filter((key) => !Object.prototype.hasOwnProperty.call(CHARACTERS, key));
   return [...builtInKeys, ...generatedKeys];
+}
+
+// Fallback character key for direct dev-mode fight launches and any select-grid
+// cell that isn't a real character (e.g. still empty, or landed on the "+" add
+// button). Built-in roster first, otherwise whatever fighter was generated
+// first this session.
+export function getDefaultCharacterKey() {
+  return Object.keys(CHARACTERS)[0] || listGeneratedCharacterIds()[0] || null;
 }

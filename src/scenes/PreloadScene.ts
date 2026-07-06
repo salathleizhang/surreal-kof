@@ -7,9 +7,6 @@ import { STAGES, STAGE_ORDER } from '../data/stages.ts';
 import { loadGeneratedIndex } from '../services/generatedCharacters.ts';
 import { loadDeferredScenes, registerDeferredScenes } from './sceneRegistry.ts';
 
-// Kyo has seven states, each backed by its own animated GIF:
-// 0: idle, 1: forward, 2: backward, 3: jump, 4: attack, 5: be hit, 6: death
-const KYO_STATE_COUNT = 7;
 const BAR_WIDTH = 420;
 const BAR_HEIGHT = 18;
 
@@ -103,13 +100,6 @@ export default class PreloadScene extends Phaser.Scene {
         return count;
       })];
 
-      for (let i = 0; i < KYO_STATE_COUNT; i += 1) {
-        animationTasks.push(registerGifTextures(this, `kyo-${i}`, `assets/player/kyo/${i}.gif`).then((count) => {
-          tick();
-          return count;
-        }));
-      }
-
       const generatedCharactersTask = loadGeneratedIndex(this, '', { addTotal, step: tickGenerated });
 
       const [animationFrameCounts, deferredScenes] = await Promise.all([
@@ -120,12 +110,11 @@ export default class PreloadScene extends Phaser.Scene {
         }),
         generatedCharactersTask,
       ]);
-      const [bgFrameCount, ...kyoFrameCounts] = animationFrameCounts;
+      const [bgFrameCount] = animationFrameCounts;
 
-      // The players need to know how many frames each state animation has so
-      // they can cycle and detect when an animation finishes.
+      // The players need to know how many frames the background animation has
+      // so it can cycle and detect when an animation finishes.
       this.registry.set('bgFrameCount', bgFrameCount);
-      this.registry.set('kyoFrameCounts', kyoFrameCounts);
       this.setProgress(1);
 
       registerDeferredScenes(this.scene, deferredScenes);
@@ -135,7 +124,7 @@ export default class PreloadScene extends Phaser.Scene {
       if (import.meta.env.DEV && params.get('dev') === 'fight') {
         this.scene.start(SCENE_KEYS.FIGHT, {
           mode: params.get('mode') || 'versus',
-          selections: [params.get('p1') || 'kyo', params.get('p2') || 'kyo'],
+          selections: [params.get('p1') || undefined, params.get('p2') || undefined],
           scene: params.get('stage') || undefined,
         });
       } else if (import.meta.env.DEV && params.get('dev') === 'select') {

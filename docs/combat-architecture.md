@@ -113,7 +113,7 @@ fireball: {
         hitstop: 4,
         knockback: { x: 190, y: 0 },
       },
-      visual: { texture: 'kyo-fireball', scale: 1.2 },
+      visual: { texture: 'fireball', scale: 1.2 },
       spawnEffect: 'fireball-cast',
       hitEffect: 'fireball-hit',
     },
@@ -147,7 +147,7 @@ edit to the old numeric `STATUS` table.
 During development, open the fight directly with:
 
 ```text
-http://127.0.0.1:5173/?dev=fight&p1=kyo&p2=kyo
+http://127.0.0.1:5173/?dev=fight&p1=chenmian&p2=chenmian
 ```
 
 This shortcut is disabled in production builds.

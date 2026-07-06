@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 
-// Static assets (the original GIF art) live in `public/` and are served at the
-// site root, e.g. `/assets/player/kyo/0.gif`.
+// Static assets (fighter art, audio, backgrounds) live in `public/` and are
+// served at the site root, e.g. `/assets/player/<character>/idle/0001.png`.
 export default defineConfig({
   base: './',
   server: {

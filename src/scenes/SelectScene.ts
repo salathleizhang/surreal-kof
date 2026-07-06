@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { getCharacter, SELECT_GRID } from '../objects/roster.ts';
+import { getCharacter, getDefaultCharacterKey, SELECT_GRID } from '../objects/roster.ts';
 import { loadGeneratedCharacter } from '../services/generatedCharacters.ts';
 import { listGeneratedCharacters } from '../state/generatedCharacters.ts';
 import { PIXEL_FONT, PIXEL_FONT_CN } from '../fonts.ts';
@@ -187,13 +187,13 @@ export default class SelectScene extends Phaser.Scene {
 
   // Lay out which character (or the "+" add button) sits in each grid cell. The
   // bottom-right cell is always the add button; generated fighters fill the
-  // slots after Kyo, the rest stay Kyo so the screen keeps its full KOF look.
+  // remaining slots in order, leaving any slot without a fighter yet empty.
   initCellChars() {
     const total = SELECT_GRID.cols * SELECT_GRID.rows;
-    this.cellChars = new Array(total).fill('kyo');
+    this.cellChars = new Array(total).fill(null);
     this.addIndex = total - 1;
     this.cellChars[this.addIndex] = ADD_KEY;
-    this.nextSlot = 1; // first free slot for a generated fighter
+    this.nextSlot = 0; // first free slot for a generated fighter
     // Seed any fighters already loaded this session (e.g. from the preloader).
     for (const entry of listGeneratedCharacters()) this.assignSlot(entry.id);
   }
@@ -318,10 +318,14 @@ export default class SelectScene extends Phaser.Scene {
     ].map((cfg, id) => {
       const flip = id === 1; // right-side figure faces left
       const homeX = cfg.boxX + boxW / 2;
+      // Placeholder texture until applyFigureTexture() picks a real fighter;
+      // '__DEFAULT' is one of Phaser's built-in textures, so it's always safe
+      // to use even before any character art is loaded.
       const figure = this.add
-        .image(homeX, boxY + boxH, 'kyo-0-0')
+        .image(homeX, boxY + boxH, '__DEFAULT')
         .setOrigin(0.5, 1)
-        .setDepth(3);
+        .setDepth(3)
+        .setVisible(false);
 
       const name = this.add
         .text(id === 0 ? 30 : width - 30, 64, '', {
@@ -405,8 +409,11 @@ export default class SelectScene extends Phaser.Scene {
 
     const step = () => {
       if (this.starting || cpu.confirmed) return;
-      if (movesLeft > 0) {
-        movesLeft -= 1;
+      const onEmptyCell = this.cells[this.cellIndex(cpu)].charKey == null
+        || this.cells[this.cellIndex(cpu)].charKey === ADD_KEY;
+      if (movesLeft > 0 || onEmptyCell) {
+        // Never settle on the "+" button or a still-empty slot — hop again.
+        movesLeft = Math.max(0, movesLeft - 1);
         this.cpuRandomMove(id);
         this.time.delayedCall(Phaser.Math.Between(220, 440), step);
       } else {
@@ -456,8 +463,9 @@ export default class SelectScene extends Phaser.Scene {
     const fig = this.figures[id];
     const key = this.cells[this.cellIndex(this.p[id])].charKey;
 
-    // The "+" cell has no fighter art — show a prompt instead.
-    if (key === ADD_KEY) {
+    // The "+" cell (and any still-empty slot) has no fighter art — show a
+    // prompt instead, since confirming there opens the creation flow.
+    if (key === ADD_KEY || key == null) {
       fig.figure.setVisible(false);
       fig.name.setText('新建角色');
       return;
@@ -565,8 +573,9 @@ export default class SelectScene extends Phaser.Scene {
 
     if (JustDown(k.confirm)) {
       const key = this.cells[this.cellIndex(player)].charKey;
-      if (key === ADD_KEY) {
-        // The "+" cell launches the creation flow instead of locking a pick.
+      if (key === ADD_KEY || key == null) {
+        // The "+" cell (and any still-empty slot) launches the creation flow
+        // instead of locking a pick.
         this.openCreateModal();
       } else {
         player.confirmed = true;
@@ -586,7 +595,9 @@ export default class SelectScene extends Phaser.Scene {
     // announcer here — the "Round 1, Fight!" cue belongs to the fight scene.)
     const selections = this.p.map((player) => {
       const key = this.cells[this.cellIndex(player)].charKey;
-      return key === ADD_KEY ? 'kyo' : key; // the CPU may land on the "+" cell
+      // Defensive fallback only — the CPU never settles on the "+" cell or an
+      // empty slot (see maybeStartCpuSelection), and humans can't confirm there.
+      return key === ADD_KEY || key == null ? getDefaultCharacterKey() : key;
     });
 
     this.scene.start(SCENE_KEYS.STAGE_SELECT, { selections, mode: this.mode });

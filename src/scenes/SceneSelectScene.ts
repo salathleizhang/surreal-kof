@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { getCharacter, DEFAULT_CHARACTER } from '../objects/roster.ts';
+import { getCharacter, getDefaultCharacterKey } from '../objects/roster.ts';
 import {
   STAGES, STAGE_ORDER, DEFAULT_STAGE,
 } from '../data/stages.ts';
@@ -40,7 +40,8 @@ export default class SceneSelectScene extends Phaser.Scene {
     const { width, height } = this.scale;
 
     this.mode = (data && data.mode) || 'versus';
-    this.selections = (data && data.selections) || [DEFAULT_CHARACTER, DEFAULT_CHARACTER];
+    const defaultCharacter = getDefaultCharacterKey();
+    this.selections = (data && data.selections) || [defaultCharacter, defaultCharacter];
 
     this.add
       .image(0, 0, 'select-scene')
@@ -192,7 +193,7 @@ export default class SceneSelectScene extends Phaser.Scene {
     ].map((cfg, id) => {
       const flip = id === 1;
       const homeX = cfg.boxX + boxW / 2;
-      const char = getCharacter(this.selections[id]) || getCharacter(DEFAULT_CHARACTER);
+      const char = getCharacter(this.selections[id]) || getCharacter(getDefaultCharacterKey());
       const figureTexture = char.figure || char.portrait;
 
       const figure = this.add

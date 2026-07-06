@@ -51,8 +51,11 @@ export function playHit(scene: any, config?: Phaser.Types.Sound.SoundConfig): vo
   if (scene.cache.audio.exists(key)) scene.sound.play(key, config);
 }
 
-// Per-character battle voice (Kyo, KOF XI rip). One random clip plays per event:
-// a grunt on attacking, a yelp on getting hit, a cry on the killing blow.
+// Shared battle voice for every fighter (built-in or generated), sourced from a
+// KOF XI voice rip — the "kyo-" prefix on the files/keys just reflects where
+// the clips came from, not which character plays them. One random clip plays
+// per event: a grunt on attacking, a yelp on getting hit, a cry on the killing
+// blow.
 const KYO_VOICE_DIR = 'assets/sfx/voice/kyo';
 export const KYO_VOICE = {
   attack: Array.from({ length: 6 }, (_, i) => `kyo-attack-${String(i + 1).padStart(2, '0')}`),
@@ -60,8 +63,9 @@ export const KYO_VOICE = {
   death: Array.from({ length: 2 }, (_, i) => `kyo-death-${String(i + 1).padStart(2, '0')}`),
 };
 
-// Move SFX (also from the Kyo rip): the air "whoosh" of a swing, and the
-// explosion of his fire moves. Keyed by `<group>-NN`, files in their own dirs.
+// Shared move SFX (also from the same rip): the air "whoosh" of a swing, and
+// an explosion, used by every fighter's moves. Keyed by `<group>-NN`, files in
+// their own dirs.
 export const SWING_KEYS = Array.from({ length: 3 }, (_, i) => `swing-${String(i + 1).padStart(2, '0')}`);
 export const EXPLOSION_KEYS = Array.from({ length: 3 }, (_, i) => `explosion-${String(i + 1).padStart(2, '0')}`);
 

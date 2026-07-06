@@ -10,9 +10,6 @@ __pycache__/
 public/assets/player/*
 !public/assets/player/generated-index.json
 
-# Built-in playable fighter.
-!public/assets/player/kyo/
-
 # Playable generated fighters listed in generated-index.json.
 !public/assets/player/fighter-87633c7b/
 !public/assets/player/chenmian/
@@ -23,9 +20,6 @@ public/assets/player/*
 
 # Ignore generated intermediates/previews inside whitelisted fighter folders.
 public/assets/player/*/*
-
-# Runtime files for the built-in fighter.
-!public/assets/player/kyo/*.gif
 
 # Runtime files for generated fighters.
 !public/assets/player/*/manifest.json

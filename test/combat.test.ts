@@ -19,7 +19,7 @@ test('winner quotes cover every requested fighter verbatim', () => {
     caixukun: '你～干～嘛',
     'fengge-wangming-tianya': '这是好事儿啊！',
   });
-  assert.equal(getWinnerQuote('kyo'), DEFAULT_WINNER_QUOTE);
+  assert.equal(getWinnerQuote('unknown-fighter'), DEFAULT_WINNER_QUOTE);
 });
 
 test('large generated-character art uses the final entrance pose', () => {

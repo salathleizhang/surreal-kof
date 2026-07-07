@@ -17,23 +17,11 @@ export const STAGES = Object.freeze({
     texture: 'stage-lakers-arena',
     image: 'assets/background/lakers-arena-stage.png',
   },
-  tiananmenNight: {
-    name: 'TIANANMEN NIGHT',
-    cn: '天安门广场·夜',
-    texture: 'stage-tiananmen-night',
-    image: 'assets/background/tiananmen-square-stage.png',
-  },
   fenggePark: {
     name: 'FENGGE PARK',
     cn: '峰哥公园',
     texture: 'stage-fengge-park',
     image: 'assets/background/fengge-park-statue-v2.png',
-  },
-  tiananmenDay: {
-    name: 'TIANANMEN DAY',
-    cn: '天安门广场·昼',
-    texture: 'stage-tiananmen-day',
-    image: 'assets/background/tiananmen-square-stage-day.png',
   },
   shenyangStreet: {
     name: 'SHENYANG STREET',
@@ -53,9 +41,7 @@ export const STAGE_ORDER = Object.freeze([
   'lovartOffice',
   'idolProducer',
   'lakersArena',
-  'tiananmenNight',
   'fenggePark',
-  'tiananmenDay',
   'shenyangStreet',
   'shanghaiBund',
 ]);

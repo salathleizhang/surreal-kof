@@ -14,7 +14,7 @@ export const CHARACTERS = {};
 // The grid shown on the MEMBER SELECT screen.
 export const SELECT_GRID = {
   cols: 6,
-  rows: 2,
+  rows: 3,
 };
 
 // Unified character lookup: built-in roster first, then any AI-generated fighter

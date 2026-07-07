@@ -68,5 +68,19 @@
     "cn": "豆包",
     "portrait": "assets/player/doubao/portrait.png",
     "playable": false
+  },
+  {
+    "id": "sam-altman",
+    "name": "SAM ALTMAN",
+    "cn": "奥特曼",
+    "portrait": "assets/player/sam-altman/portrait.png",
+    "playable": false
+  },
+  {
+    "id": "dario-amodei",
+    "name": "DARIO AMODEI",
+    "cn": "达利欧",
+    "portrait": "assets/player/dario-amodei/portrait.png",
+    "playable": false
   }
 ]

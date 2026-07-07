@@ -75,7 +75,7 @@ export function createGeneratedCombatDefinition(
       startEffects: ['move-name', 'attack-voice'],
       events: [{
         id: 'super-hit',
-        frame: 'apex',
+        frame: 'end',
         type: 'direct-hit',
         hit: {
           damage: moves.super?.damage || DEFAULT_DAMAGE.super,

@@ -114,7 +114,7 @@
         "events": [
           {
             "id": "super-hit",
-            "frame": 208,
+            "frame": "end",
             "type": "direct-hit",
             "hit": { "damage": 50, "hitstop": 6, "effect": "hit-spark", "rageGain": 0 }
           }

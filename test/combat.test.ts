@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import CollisionWorld from '../src/combat/CollisionWorld.ts';
 import SkillRunner from '../src/combat/SkillRunner.ts';
+import { playbackForFrame } from '../src/combat/animation.ts';
 import { intersectsAabb, localBoxToWorld } from '../src/combat/collision/geometry.ts';
 import { isGuardInput, resolveDamage } from '../src/combat/guard.ts';
 import { createGeneratedCombatDefinition } from '../src/characters/generated/createCombatDefinition.ts';
@@ -64,6 +65,12 @@ test('guarded hits deal no damage, including all-damage hits', () => {
   assert.equal(resolveDamage('all', 100, true), 0);
   assert.equal(resolveDamage(20, 100, false), 20);
   assert.equal(resolveDamage('all', 73, false), 73);
+});
+
+test('forced-loop playback keeps cinematic backgrounds cycling', () => {
+  const animation = { frame_cnt: 5, frame_rate: 2, playback: 'forward' as const };
+  assert.deepEqual(playbackForFrame(animation, 24), { frame: 4, finished: true });
+  assert.deepEqual(playbackForFrame(animation, 24, true), { frame: 2, finished: false });
 });
 
 test('collision world resolves a skill-owned hitbox against target hurtboxes', () => {
@@ -175,6 +182,34 @@ test('skill runner fires multiple same-frame events exactly once', () => {
   assert.deepEqual(dispatched, ['high', 'low']);
 });
 
+test('skill runner lets authored events pause the animation timeline once', () => {
+  const pauses = [];
+  const fighter = {
+    status: 0,
+    frame_current_cnt: 0,
+    isDead: () => false,
+    canStartSkill: () => true,
+    hasAnimation: () => true,
+    animationApex: () => 3,
+    animationDuration: () => 9,
+    beginSkill(skill) { this.status = skill.animation; this.frame_current_cnt = 0; },
+    pauseAnimation(frames) { pauses.push(frames); },
+    scene: { combatEffects: { emit() {} } },
+  };
+  const runner = new SkillRunner(fighter as any, {
+    super: {
+      id: 'super', input: 'special', animation: 8,
+      events: [{ id: 'dramatic-hold', frame: 4, type: 'cinematic-pause', duration: 18 }],
+    },
+  });
+
+  runner.start('super');
+  fighter.frame_current_cnt = 4;
+  runner.update();
+  runner.update();
+  assert.deepEqual(pauses, [18]);
+});
+
 test('active hitbox windows damage the same target only once', () => {
   const target = {};
   let hits = 0;
@@ -225,6 +260,16 @@ test('generated character body overrides resize default pushbox and hurtbox', ()
   }]);
   const attackEvent = combat.skills.attack1.events[0];
   assert.equal(attackEvent.type === 'hitbox' ? attackEvent.box.x : undefined, 240);
+});
+
+test('generated character supers default to the full action timeline', () => {
+  const combat = createGeneratedCombatDefinition({
+    moves: { super: { name: 'Finish', damage: 44 } },
+  });
+  const event = combat.skills.super.events[0];
+  assert.equal(event.type, 'direct-hit');
+  assert.equal(event.frame, 'end');
+  assert.equal(event.type === 'direct-hit' ? event.hit.damage : undefined, 44);
 });
 
 test('projectiles move independently and resolve their own collision box', () => {

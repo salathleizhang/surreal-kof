@@ -84,7 +84,12 @@ export interface EffectEvent extends SkillEventBase {
   effect: string;
 }
 
-export type SkillEvent = HitboxEvent | MovementEvent | ProjectileEvent | DirectHitEvent | EffectEvent;
+export interface PauseEvent extends SkillEventBase {
+  type: 'pause' | 'cinematic-pause';
+  duration: number;
+}
+
+export type SkillEvent = HitboxEvent | MovementEvent | ProjectileEvent | DirectHitEvent | EffectEvent | PauseEvent;
 
 export interface SkillDefinition {
   id: string;
@@ -185,6 +190,7 @@ export interface FighterLike {
   getHurtboxes(): Box[];
   receiveHit(hit: HitData): void;
   clampToStage(): void;
+  pauseAnimation?(frames: number): void;
   onSkillFinished?(skill: SkillDefinition): void;
   onSkillCancelled?(skill: SkillDefinition): void;
 }

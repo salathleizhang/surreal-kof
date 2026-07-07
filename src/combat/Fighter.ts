@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import AiController from '../objects/AiController.ts';
 import SkillRunner from './SkillRunner.ts';
+import { playbackForFrame } from './animation.ts';
 import { localBoxToWorld } from './collision/geometry.ts';
 import { isGuardInput, resolveDamage } from './guard.ts';
 import {
@@ -10,7 +11,7 @@ import {
   CHARACTER_SCALE, DEFAULT_MAX_RAGE, DEFAULT_RAGE_GAIN_PER_HIT, FIGHTER_STATE, STATUS,
 } from '../config/combat.ts';
 import type {
-  AnimationDefinition, AnimationState, Box, CombatDefinition, FighterBody,
+  AnimationDefinition, AnimationLayerDefinition, AnimationState, Box, CombatDefinition, FighterBody,
   FighterStats, HitData, SkillDefinition,
 } from '../types/combat.ts';
 
@@ -81,9 +82,12 @@ export default class Fighter {
   keys?: Record<string, Phaser.Input.Keyboard.Key>;
   sprite: Phaser.GameObjects.Image;
   backgroundSprite: Phaser.GameObjects.Image | null;
+  backgroundFrameCurrentCnt: number;
+  backgroundTexturePrefix: string | null;
   timedelta: number;
   flashFrames: number;
   ghostTick: number;
+  animationPauseFrames: number;
   skillRunner: SkillRunner;
 
   constructor(scene: any, info: FighterCreateInfo) {
@@ -129,10 +133,13 @@ export default class Fighter {
     this.sprite.setOrigin(0, 0);
     this.sprite.setDepth(10);
     this.backgroundSprite = null;
+    this.backgroundFrameCurrentCnt = 0;
+    this.backgroundTexturePrefix = null;
 
     this.timedelta = 0;
     this.flashFrames = 0;
     this.ghostTick = 0;
+    this.animationPauseFrames = 0;
     this.skillRunner = new SkillRunner(this, this.combat.skills);
     scene.combatWorld?.registerFighter(this);
   }
@@ -239,6 +246,7 @@ export default class Fighter {
     this.status = skill.animation;
     this.combatState = FIGHTER_STATE.ATTACKING;
     this.frame_current_cnt = 0;
+    this.animationPauseFrames = 0;
     if (skill.stopOnStart !== false) this.vx = 0;
   }
 
@@ -248,10 +256,12 @@ export default class Fighter {
     this.status = STATUS.IDLE;
     this.combatState = FIGHTER_STATE.NEUTRAL;
     this.frame_current_cnt = 0;
+    this.animationPauseFrames = 0;
   }
 
   onSkillCancelled(skill: SkillDefinition): void {
     if (skill.stopOnEnd !== false) this.vx = 0;
+    this.animationPauseFrames = 0;
   }
 
   hasAnimation(state: AnimationState): boolean {
@@ -264,8 +274,16 @@ export default class Fighter {
     this.status = state;
     this.combatState = combatState;
     this.frame_current_cnt = 0;
+    this.animationPauseFrames = 0;
     this.vx = 0;
     return true;
+  }
+
+  pauseAnimation(frames: number): void {
+    this.animationPauseFrames = Math.max(
+      this.animationPauseFrames,
+      Math.max(0, Math.floor(frames || 0)),
+    );
   }
 
   updateMove(): void {
@@ -357,6 +375,7 @@ export default class Fighter {
       return;
     }
     this.skillRunner.cancel();
+    this.animationPauseFrames = 0;
 
     this.status = STATUS.HIT;
     this.combatState = FIGHTER_STATE.HITSTUN;
@@ -390,6 +409,7 @@ export default class Fighter {
     this.status = STATUS.DEATH;
     this.combatState = FIGHTER_STATE.DEAD;
     this.frame_current_cnt = 0;
+    this.animationPauseFrames = 0;
     this.vx = 0;
     this.comboHits = 0;
     playDeathVoice(this.scene);
@@ -412,7 +432,11 @@ export default class Fighter {
     }
     const animation = this.animations.get(renderState);
     if (animation?.background) this.renderAnimationBackground(animation.background);
-    else if (this.backgroundSprite) this.backgroundSprite.setVisible(false);
+    else {
+      if (this.backgroundSprite) this.backgroundSprite.setVisible(false);
+      this.backgroundFrameCurrentCnt = 0;
+      this.backgroundTexturePrefix = null;
+    }
     if (animation && animation.frame_cnt > 0) {
       const playback = this.playbackFor(animation);
       const key = `${this.texturePrefix}-${renderState}-${playback.frame}`;
@@ -475,6 +499,10 @@ export default class Fighter {
         }
       }
     }
+    if (this.animationPauseFrames > 0) {
+      this.animationPauseFrames -= 1;
+      return;
+    }
     this.frame_current_cnt += 1;
   }
 
@@ -493,7 +521,11 @@ export default class Fighter {
   }
 
   renderAnimationBackground(background: NonNullable<AnimationDefinition['background']>): void {
-    const playback = this.playbackFor(background);
+    if (this.backgroundTexturePrefix !== background.texturePrefix) {
+      this.backgroundTexturePrefix = background.texturePrefix;
+      this.backgroundFrameCurrentCnt = 0;
+    }
+    const playback = this.playbackFor(background, this.backgroundFrameCurrentCnt, true);
     const key = `${background.texturePrefix}-${playback.frame}`;
     if (!this.backgroundSprite) {
       this.backgroundSprite = this.scene.add.image(0, 0, key).setOrigin(0, 0);
@@ -513,6 +545,7 @@ export default class Fighter {
         (stageHeight - (background.srcH || stageHeight) * cover) / 2,
       )
       .setDepth(5);
+    this.backgroundFrameCurrentCnt += 1;
   }
 
   finishOneShot(state: AnimationState): void {
@@ -523,26 +556,17 @@ export default class Fighter {
     this.status = STATUS.IDLE;
     this.combatState = FIGHTER_STATE.NEUTRAL;
     this.frame_current_cnt = 0;
+    this.animationPauseFrames = 0;
     this.vx = 0;
     this.comboHits = 0;
   }
 
-  playbackFor(animation: AnimationDefinition): { frame: number; finished: boolean } {
-    const frameCount = animation.frame_cnt;
-    const step = Math.floor(this.frame_current_cnt / animation.frame_rate);
-    if (!animation.playback || animation.playback === 'loop') {
-      return { frame: step % frameCount, finished: false };
-    }
-    if (animation.playback === 'forward' || animation.playback === 'hold') {
-      const frame = Math.min(step, frameCount - 1);
-      return { frame, finished: step >= frameCount - 1 };
-    }
-    if (animation.playback === 'yoyo') {
-      const span = Math.max(1, 2 * (frameCount - 1));
-      const frame = step <= frameCount - 1 ? step : Math.max(0, span - step);
-      return { frame, finished: step >= span };
-    }
-    return { frame: step % frameCount, finished: false };
+  playbackFor(
+    animation: AnimationDefinition | AnimationLayerDefinition,
+    frameCurrent = this.frame_current_cnt,
+    forceLoop = false,
+  ): { frame: number; finished: boolean } {
+    return playbackForFrame(animation, frameCurrent, forceLoop);
   }
 
   spawnGhost(): void {

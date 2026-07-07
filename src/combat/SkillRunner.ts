@@ -163,6 +163,8 @@ export default class SkillRunner {
       effects?.emit(event.effect, context);
     } else if (event.type === 'velocity') {
       this.applyMovement(event);
+    } else if (event.type === 'pause' || event.type === 'cinematic-pause') {
+      this.fighter.pauseAnimation?.(event.duration);
     }
     return 0;
   }

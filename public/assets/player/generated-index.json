@@ -3,84 +3,84 @@
     "id": "fighter-87633c7b",
     "name": "老罗",
     "cn": "老罗",
-    "portrait": "assets/player/fighter-87633c7b/portrait.png",
+    "portrait": "assets/player/fighter-87633c7b/portrait.webp",
     "manifest": "assets/player/fighter-87633c7b/manifest.json"
   },
   {
     "id": "chenmian",
     "name": "CHEN MIAN",
     "cn": "陈冕",
-    "portrait": "assets/player/chenmian/portrait.png",
+    "portrait": "assets/player/chenmian/portrait.webp",
     "manifest": "assets/player/chenmian/manifest.json"
   },
   {
     "id": "caixukun",
     "name": "CAI XUKUN",
     "cn": "蔡徐坤",
-    "portrait": "assets/player/caixukun/portrait.png",
+    "portrait": "assets/player/caixukun/portrait.webp",
     "manifest": "assets/player/caixukun/manifest.json"
   },
   {
     "id": "fengge-wangming-tianya",
     "name": "FENGGE WANGMING TIANYA",
     "cn": "峰哥亡命天涯",
-    "portrait": "assets/player/fengge-wangming-tianya/portrait.png",
+    "portrait": "assets/player/fengge-wangming-tianya/portrait.webp",
     "manifest": "assets/player/fengge-wangming-tianya/manifest.json"
   },
   {
     "id": "speed",
     "name": "SPEED",
     "cn": "speed",
-    "portrait": "assets/player/speed/portrait.png",
+    "portrait": "assets/player/speed/portrait.webp",
     "manifest": "assets/player/speed/manifest.json"
   },
   {
     "id": "kobe",
     "name": "KOBE",
     "cn": "科比",
-    "portrait": "assets/player/kobe/portrait.png",
+    "portrait": "assets/player/kobe/portrait.webp",
     "manifest": "assets/player/kobe/manifest.json"
   },
   {
     "id": "elon-musk",
     "name": "ELON MUSK",
     "cn": "马斯克",
-    "portrait": "assets/player/elon-musk/portrait.png",
+    "portrait": "assets/player/elon-musk/portrait.webp",
     "playable": false
   },
   {
     "id": "donald-trump",
     "name": "DONALD TRUMP",
     "cn": "特朗普",
-    "portrait": "assets/player/donald-trump/portrait.png",
+    "portrait": "assets/player/donald-trump/portrait.webp",
     "playable": false
   },
   {
     "id": "mark-zuckerberg",
     "name": "MARK ZUCKERBERG",
     "cn": "小扎",
-    "portrait": "assets/player/mark-zuckerberg/portrait.png",
+    "portrait": "assets/player/mark-zuckerberg/portrait.webp",
     "playable": false
   },
   {
     "id": "doubao",
     "name": "DOUBAO",
     "cn": "豆包",
-    "portrait": "assets/player/doubao/portrait.png",
+    "portrait": "assets/player/doubao/portrait.webp",
     "playable": false
   },
   {
     "id": "sam-altman",
     "name": "SAM ALTMAN",
     "cn": "奥特曼",
-    "portrait": "assets/player/sam-altman/portrait.png",
+    "portrait": "assets/player/sam-altman/portrait.webp",
     "playable": false
   },
   {
     "id": "dario-amodei",
     "name": "DARIO AMODEI",
     "cn": "达利欧",
-    "portrait": "assets/player/dario-amodei/portrait.png",
+    "portrait": "assets/player/dario-amodei/portrait.webp",
     "playable": false
   }
 ]

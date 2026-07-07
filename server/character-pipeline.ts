@@ -27,14 +27,17 @@ const PUBLIC_DIR = join(__dirname, '..', 'public');
 // Tests can isolate generated output in a temp directory without touching the
 // real roster; production keeps writing to Vite's public asset tree.
 const PLAYER_DIR = process.env.KOF_GENERATED_PLAYER_DIR || join(PUBLIC_DIR, 'assets', 'player');
-export const LAOLUO_IDLE_STYLE_REFERENCE = join(
+const LAOLUO_IDLE_STYLE_REFERENCE_DIR = join(
   PUBLIC_DIR,
   'assets',
   'player',
   'fighter-87633c7b',
   'idle',
-  '0001.png',
 );
+
+export const LAOLUO_IDLE_STYLE_REFERENCE = ['webp', 'png']
+  .map((extension) => join(LAOLUO_IDLE_STYLE_REFERENCE_DIR, `0001.${extension}`))
+  .find((file) => existsSync(file)) || join(LAOLUO_IDLE_STYLE_REFERENCE_DIR, '0001.png');
 
 export const BASE_REFERENCE_ROLES = 'Reference image 1 defines the target character identity, face, hairstyle, body build, clothing and colors. '
   + 'Reference image 2 is the Lao Luo idle sprite and is a STYLE REFERENCE ONLY: match only its logical pixel density, uniform pixel-block size, '

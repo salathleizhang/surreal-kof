@@ -23,6 +23,8 @@ public/assets/player/*
 !public/assets/player/doubao/
 !public/assets/player/mark-zuckerberg/
 !public/assets/player/elon-musk/
+!public/assets/player/sam-altman/
+!public/assets/player/dario-amodei/
 
 # Ignore generated intermediates/previews inside whitelisted fighter folders.
 public/assets/player/*/*
@@ -30,26 +32,39 @@ public/assets/player/*/*
 # Runtime files for generated fighters.
 !public/assets/player/*/manifest.json
 !public/assets/player/*/base.png
+!public/assets/player/*/base.webp
 !public/assets/player/*/portrait.png
+!public/assets/player/*/portrait.webp
 !public/assets/player/*/idle/
 !public/assets/player/*/idle/*.png
+!public/assets/player/*/idle/*.webp
 !public/assets/player/*/walk/
 !public/assets/player/*/walk/*.png
+!public/assets/player/*/walk/*.webp
 !public/assets/player/*/jump/
 !public/assets/player/*/jump/*.png
+!public/assets/player/*/jump/*.webp
 !public/assets/player/*/guard/
 !public/assets/player/*/guard/*.png
+!public/assets/player/*/guard/*.webp
 !public/assets/player/*/hit/
 !public/assets/player/*/hit/*.png
+!public/assets/player/*/hit/*.webp
 !public/assets/player/*/attack1/
 !public/assets/player/*/attack1/*.png
+!public/assets/player/*/attack1/*.webp
 !public/assets/player/*/attack2/
 !public/assets/player/*/attack2/*.png
+!public/assets/player/*/attack2/*.webp
 !public/assets/player/*/intro/
 !public/assets/player/*/intro/*.png
+!public/assets/player/*/intro/*.webp
 !public/assets/player/*/death/
 !public/assets/player/*/death/*.png
+!public/assets/player/*/death/*.webp
 !public/assets/player/*/super/
 !public/assets/player/*/super/*.png
+!public/assets/player/*/super/*.webp
 !public/assets/player/*/super-background/
 !public/assets/player/*/super-background/*.png
+!public/assets/player/*/super-background/*.webp

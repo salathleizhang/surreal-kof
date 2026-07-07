@@ -3,50 +3,56 @@
   "name": "FENGGE WANGMING TIANYA",
   "cn": "峰哥亡命天涯",
   "summary": "亡命天涯的狠角色，近身拳脚压迫，靠情绪爆发打出大招。",
-  "base": "assets/player/fengge-wangming-tianya/base.png",
-  "portrait": "assets/player/fengge-wangming-tianya/portrait.png",
+  "base": "assets/player/fengge-wangming-tianya/base.webp",
+  "portrait": "assets/player/fengge-wangming-tianya/portrait.webp",
   "anims": {
     "idle": {
       "engineState": 0,
       "dir": "assets/player/fengge-wangming-tianya/idle",
       "frames": 8,
       "playback": "loop",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     },
     "walk": {
       "engineState": 1,
       "dir": "assets/player/fengge-wangming-tianya/walk",
       "frames": 8,
       "playback": "loop",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     },
     "attack1": {
       "engineState": 4,
       "dir": "assets/player/fengge-wangming-tianya/attack1",
       "frames": 7,
       "playback": "yoyo",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     },
     "attack2": {
       "engineState": "attack2",
       "dir": "assets/player/fengge-wangming-tianya/attack2",
       "frames": 7,
       "playback": "yoyo",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     },
     "intro": {
       "engineState": "intro",
       "dir": "assets/player/fengge-wangming-tianya/intro",
       "frames": 8,
       "playback": "forward",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     },
     "death": {
       "engineState": 6,
       "dir": "assets/player/fengge-wangming-tianya/death",
       "frames": 10,
       "playback": "hold",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     },
     "super": {
       "engineState": "super",
@@ -55,7 +61,8 @@
       "playback": "forward",
       "matte": false,
       "frameRate": 10,
-      "fullscreen": true
+      "fullscreen": true,
+      "extension": "webp"
     }
   },
   "moves": {

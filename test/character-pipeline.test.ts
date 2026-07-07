@@ -30,7 +30,7 @@ test('mock pipeline emits guard, idle-anchored jump/hit and split super assets',
     const baseReferences = pipeline.baseImageReferences('/tmp/target-person.png');
     assert.equal(baseReferences[0], '/tmp/target-person.png');
     assert.equal(baseReferences.length, 2);
-    assert.match(baseReferences[1], /fighter-87633c7b\/idle\/0001\.png$/);
+    assert.match(baseReferences[1], /fighter-87633c7b\/idle\/0001\.(webp|png)$/);
     assert.match(pipeline.BASE_REFERENCE_ROLES, /STYLE REFERENCE ONLY/);
     assert.doesNotMatch(baseReferences[1], /attack|intro|super/);
     const guardPlan = pipeline.ANIMS.find((anim) => anim.key === 'guard');

@@ -3,50 +3,56 @@
   "name": "CAI XUKUN",
   "cn": "蔡徐坤",
   "summary": "ikun 唱跳rap篮球，全能舞担",
-  "base": "assets/player/caixukun/base.png",
-  "portrait": "assets/player/caixukun/portrait.png",
+  "base": "assets/player/caixukun/base.webp",
+  "portrait": "assets/player/caixukun/portrait.webp",
   "anims": {
     "walk": {
       "engineState": 1,
       "dir": "assets/player/caixukun/walk",
       "frames": 8,
       "playback": "loop",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     },
     "attack2": {
       "engineState": "attack2",
       "dir": "assets/player/caixukun/attack2",
       "frames": 7,
       "playback": "yoyo",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     },
     "attack1": {
       "engineState": 4,
       "dir": "assets/player/caixukun/attack1",
       "frames": 7,
       "playback": "yoyo",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     },
     "idle": {
       "engineState": 0,
       "dir": "assets/player/caixukun/idle",
       "frames": 8,
       "playback": "loop",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     },
     "death": {
       "engineState": 6,
       "dir": "assets/player/caixukun/death",
       "frames": 10,
       "playback": "hold",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     },
     "intro": {
       "engineState": "intro",
       "dir": "assets/player/caixukun/intro",
       "frames": 8,
       "playback": "forward",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     },
     "super": {
       "engineState": "super",
@@ -54,7 +60,8 @@
       "frames": 16,
       "frameRate": 16,
       "playback": "forward",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     },
     "jump": {
       "engineState": 3,
@@ -62,7 +69,8 @@
       "frames": 8,
       "frameRate": 12,
       "playback": "forward",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     },
     "guard": {
       "engineState": 10,
@@ -70,7 +78,8 @@
       "frames": 8,
       "frameRate": 8,
       "playback": "hold",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     },
     "hit": {
       "engineState": 5,
@@ -78,7 +87,8 @@
       "frames": 8,
       "frameRate": 10,
       "playback": "forward",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     }
   },
   "moves": {
@@ -102,6 +112,7 @@
     "frameRate": 10,
     "playback": "forward",
     "matte": false,
-    "fullscreen": true
+    "fullscreen": true,
+    "extension": "webp"
   }
 }

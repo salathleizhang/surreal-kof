@@ -16,7 +16,7 @@ const CN_FONT = PIXEL_FONT_CN;
 // The stage is one shared choice. W/up flips to the previous stage, S/down to the
 // next, and SPACE/ENTER locks it in; SHIFT/Backspace hops back to member select.
 
-// This screen reuses the member-select art (select-scene.png), but a blue base
+// This screen reuses the member-select art (select-scene.webp), but a blue base
 // can't be turned red by a multiply tint (it just goes dark), so instead we lay
 // a translucent red "gel" over it — that reliably recolours any background red
 // while keeping a hint of the underlying texture.

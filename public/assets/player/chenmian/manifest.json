@@ -3,15 +3,16 @@
   "name": "CHEN MIAN",
   "cn": "陈冕",
   "summary": "金钱主宰，撒币为攻",
-  "base": "assets/player/chenmian/base.png",
-  "portrait": "assets/player/chenmian/portrait.png",
+  "base": "assets/player/chenmian/base.webp",
+  "portrait": "assets/player/chenmian/portrait.webp",
   "anims": {
     "idle": {
       "engineState": 0,
       "dir": "assets/player/chenmian/idle",
       "frames": 8,
       "playback": "loop",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     },
     "walk": {
       "engineState": 1,
@@ -19,7 +20,8 @@
       "frames": 12,
       "frameRate": 12,
       "playback": "loop",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     },
     "jump": {
       "engineState": 3,
@@ -27,7 +29,8 @@
       "frames": 8,
       "frameRate": 8,
       "playback": "forward",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     },
     "guard": {
       "engineState": 10,
@@ -35,7 +38,8 @@
       "frames": 8,
       "frameRate": 8,
       "playback": "hold",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     },
     "hit": {
       "engineState": 5,
@@ -43,7 +47,8 @@
       "frames": 8,
       "frameRate": 10,
       "playback": "forward",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     },
     "attack1": {
       "engineState": 4,
@@ -51,7 +56,8 @@
       "frames": 7,
       "frameRate": 10,
       "playback": "forward",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     },
     "attack2": {
       "engineState": "attack2",
@@ -59,7 +65,8 @@
       "frames": 9,
       "frameRate": 10,
       "playback": "forward",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     },
     "intro": {
       "engineState": "intro",
@@ -67,7 +74,8 @@
       "frames": 8,
       "frameRate": 10,
       "playback": "forward",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     },
     "death": {
       "engineState": 6,
@@ -75,7 +83,8 @@
       "frames": 10,
       "frameRate": 8,
       "playback": "hold",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     },
     "super": {
       "engineState": "super",
@@ -83,7 +92,8 @@
       "frames": 16,
       "frameRate": 16,
       "playback": "forward",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     }
   },
   "moves": {
@@ -107,12 +117,15 @@
     "frameRate": 10,
     "playback": "forward",
     "matte": false,
-    "fullscreen": true
+    "fullscreen": true,
+    "extension": "webp"
   },
   "combat": {
     "skills": {
       "attack2": {
-        "ai": { "range": 900 },
+        "ai": {
+          "range": 900
+        },
         "events": [
           {
             "id": "attack2-throw",
@@ -128,7 +141,10 @@
               "damage": 22,
               "hitstop": 4,
               "spawnEffect": "swing",
-              "visual": { "tint": 2600544, "scale": 1.3 }
+              "visual": {
+                "tint": 2600544,
+                "scale": 1.3
+              }
             }
           }
         ]

@@ -1,7 +1,7 @@
 // Runtime registry for AI-generated fighters.
 //
 // A generated character is produced by the local pipeline as a manifest + a set
-// of transparent PNG frames under assets/player/<id>/. This module loads those
+// of transparent frames under assets/player/<id>/. This module loads those
 // frames into Phaser textures (keyed `<id>-<state>-<frame>`, matching how
 // Player.render() looks them up) and records the per-state animation metadata so
 // a GeneratedFighter can play it. Textures live in Phaser's global manager, so a
@@ -49,6 +49,10 @@ const FRAME_RATE: Record<string, number> = {
 };
 
 function pad4(n: number): string { return String(n).padStart(4, '0'); }
+
+function frameUrl(dir: string, index: number, extension = 'png'): string {
+  return `${dir}/${pad4(index)}.${extension}`;
+}
 
 // Load a list of {key,url} images through the scene loader, resolving once all
 // have finished (or rejecting on the first hard error).
@@ -133,7 +137,7 @@ export async function loadGeneratedCharacter(
     // key directly, allowing manifests to add moves without editing this table.
     const state: AnimationState = KEY_TO_STATE[animKey] ?? info.engineState ?? animKey;
     for (let i = 0; i < info.frames; i += 1) {
-      entries.push({ key: `${id}-${state}-${i}`, url: `${base}${info.dir}/${pad4(i + 1)}.png` });
+      entries.push({ key: `${id}-${state}-${i}`, url: `${base}${frameUrl(info.dir, i + 1, info.extension)}` });
     }
     animMeta[state] = {
       frame_cnt: info.frames,
@@ -165,7 +169,7 @@ export async function loadGeneratedCharacter(
     for (let i = 0; i < backgroundInfo.frames; i += 1) {
       entries.push({
         key: `${texturePrefix}-${i}`,
-        url: `${base}${backgroundInfo.dir}/${pad4(i + 1)}.png`,
+        url: `${base}${frameUrl(backgroundInfo.dir, i + 1, backgroundInfo.extension)}`,
       });
     }
     superBackground = {

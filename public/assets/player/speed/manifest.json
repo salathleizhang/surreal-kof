@@ -3,50 +3,56 @@
   "name": "SPEED",
   "cn": "speed",
   "summary": "高速整活型选手，用拳击和后空翻拉开节奏，大招以 siu 收尾。",
-  "base": "assets/player/speed/base.png",
-  "portrait": "assets/player/speed/portrait.png",
+  "base": "assets/player/speed/base.webp",
+  "portrait": "assets/player/speed/portrait.webp",
   "anims": {
     "idle": {
       "engineState": 0,
       "dir": "assets/player/speed/idle",
       "frames": 8,
       "playback": "loop",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     },
     "walk": {
       "engineState": 1,
       "dir": "assets/player/speed/walk",
       "frames": 8,
       "playback": "loop",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     },
     "attack1": {
       "engineState": 4,
       "dir": "assets/player/speed/attack1",
       "frames": 7,
       "playback": "yoyo",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     },
     "attack2": {
       "engineState": "attack2",
       "dir": "assets/player/speed/attack2",
       "frames": 7,
       "playback": "yoyo",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     },
     "intro": {
       "engineState": "intro",
       "dir": "assets/player/speed/intro",
       "frames": 8,
       "playback": "forward",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     },
     "death": {
       "engineState": 6,
       "dir": "assets/player/speed/death",
       "frames": 10,
       "playback": "hold",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     },
     "super": {
       "engineState": "super",
@@ -55,7 +61,8 @@
       "playback": "forward",
       "matte": false,
       "frameRate": 10,
-      "fullscreen": true
+      "fullscreen": true,
+      "extension": "webp"
     }
   },
   "moves": {

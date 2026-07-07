@@ -3,22 +3,24 @@
   "name": "老罗",
   "cn": "老罗",
   "summary": "",
-  "base": "assets/player/fighter-87633c7b/base.png",
-  "portrait": "assets/player/fighter-87633c7b/portrait.png",
+  "base": "assets/player/fighter-87633c7b/base.webp",
+  "portrait": "assets/player/fighter-87633c7b/portrait.webp",
   "anims": {
     "idle": {
       "engineState": 0,
       "dir": "assets/player/fighter-87633c7b/idle",
       "frames": 8,
       "playback": "loop",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     },
     "walk": {
       "engineState": 1,
       "dir": "assets/player/fighter-87633c7b/walk",
       "frames": 8,
       "playback": "loop",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     },
     "jump": {
       "engineState": 3,
@@ -26,7 +28,8 @@
       "frames": 8,
       "frameRate": 5,
       "playback": "forward",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     },
     "guard": {
       "engineState": 10,
@@ -34,7 +37,8 @@
       "frames": 8,
       "frameRate": 5,
       "playback": "hold",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     },
     "hit": {
       "engineState": 5,
@@ -42,7 +46,8 @@
       "frames": 8,
       "frameRate": 5,
       "playback": "forward",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     },
     "attack1": {
       "engineState": 4,
@@ -50,7 +55,8 @@
       "frames": 8,
       "frameRate": 5,
       "playback": "forward",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     },
     "attack2": {
       "engineState": "attack2",
@@ -58,7 +64,8 @@
       "frames": 15,
       "frameRate": 3,
       "playback": "forward",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     },
     "intro": {
       "engineState": "intro",
@@ -66,7 +73,8 @@
       "frames": 8,
       "frameRate": 5,
       "playback": "forward",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     },
     "death": {
       "engineState": 6,
@@ -74,7 +82,8 @@
       "frames": 10,
       "frameRate": 5,
       "playback": "hold",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     },
     "super": {
       "engineState": "super",
@@ -83,7 +92,12 @@
       "frameRate": 16,
       "playback": "forward",
       "matte": true,
-      "dash": { "fromFrame": 10, "toFrame": 13, "standoff": 90 }
+      "dash": {
+        "fromFrame": 10,
+        "toFrame": 13,
+        "standoff": 90
+      },
+      "extension": "webp"
     }
   },
   "superBackground": {
@@ -92,7 +106,8 @@
     "frameRate": 10,
     "playback": "forward",
     "matte": false,
-    "fullscreen": true
+    "fullscreen": true,
+    "extension": "webp"
   },
   "moves": {
     "attack1": {
@@ -116,7 +131,12 @@
             "id": "super-hit",
             "frame": "end",
             "type": "direct-hit",
-            "hit": { "damage": 50, "hitstop": 6, "effect": "hit-spark", "rageGain": 0 }
+            "hit": {
+              "damage": 50,
+              "hitstop": 6,
+              "effect": "hit-spark",
+              "rageGain": 0
+            }
           }
         ]
       }

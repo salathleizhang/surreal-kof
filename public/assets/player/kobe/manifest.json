@@ -3,50 +3,56 @@
   "name": "KOBE",
   "cn": "科比",
   "summary": "篮球巨星风格格斗角色，拳脚近战后接后仰跳投终结。",
-  "base": "assets/player/kobe/base.png",
-  "portrait": "assets/player/kobe/portrait.png",
+  "base": "assets/player/kobe/base.webp",
+  "portrait": "assets/player/kobe/portrait.webp",
   "anims": {
     "idle": {
       "engineState": 0,
       "dir": "assets/player/kobe/idle",
       "frames": 8,
       "playback": "loop",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     },
     "walk": {
       "engineState": 1,
       "dir": "assets/player/kobe/walk",
       "frames": 8,
       "playback": "loop",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     },
     "attack1": {
       "engineState": 4,
       "dir": "assets/player/kobe/attack1",
       "frames": 7,
       "playback": "yoyo",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     },
     "attack2": {
       "engineState": "attack2",
       "dir": "assets/player/kobe/attack2",
       "frames": 7,
       "playback": "yoyo",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     },
     "intro": {
       "engineState": "intro",
       "dir": "assets/player/kobe/intro",
       "frames": 8,
       "playback": "forward",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     },
     "death": {
       "engineState": 6,
       "dir": "assets/player/kobe/death",
       "frames": 10,
       "playback": "hold",
-      "matte": true
+      "matte": true,
+      "extension": "webp"
     },
     "super": {
       "engineState": "super",
@@ -55,7 +61,8 @@
       "playback": "forward",
       "matte": false,
       "frameRate": 10,
-      "fullscreen": true
+      "fullscreen": true,
+      "extension": "webp"
     }
   },
   "moves": {

@@ -6,6 +6,7 @@ export type PlaybackMode = 'loop' | 'forward' | 'yoyo' | 'hold';
 
 export interface GeneratedAnimationManifest {
   dir: string;
+  extension?: string;
   frames: number;
   playback: PlaybackMode;
   engineState?: AnimationState;

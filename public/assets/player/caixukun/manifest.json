@@ -51,11 +51,34 @@
     "super": {
       "engineState": "super",
       "dir": "assets/player/caixukun/super",
-      "frames": 25,
+      "frames": 16,
+      "frameRate": 16,
       "playback": "forward",
-      "matte": false,
+      "matte": true
+    },
+    "jump": {
+      "engineState": 3,
+      "dir": "assets/player/caixukun/jump",
+      "frames": 8,
+      "frameRate": 12,
+      "playback": "forward",
+      "matte": true
+    },
+    "guard": {
+      "engineState": 10,
+      "dir": "assets/player/caixukun/guard",
+      "frames": 8,
+      "frameRate": 8,
+      "playback": "hold",
+      "matte": true
+    },
+    "hit": {
+      "engineState": 5,
+      "dir": "assets/player/caixukun/hit",
+      "frames": 8,
       "frameRate": 10,
-      "fullscreen": true
+      "playback": "forward",
+      "matte": true
     }
   },
   "moves": {
@@ -72,5 +95,13 @@
       "damage": 40
     }
   },
-  "createdAt": 1782622258019
+  "createdAt": 1782622258019,
+  "superBackground": {
+    "dir": "assets/player/caixukun/super-background",
+    "frames": 25,
+    "frameRate": 10,
+    "playback": "forward",
+    "matte": false,
+    "fullscreen": true
+  }
 }

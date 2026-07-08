@@ -65,7 +65,7 @@ test('mock pipeline emits guard, idle-anchored jump/hit and split super assets',
     pipeline.advanceJob(job.id);
     job = await waitForSettled(pipeline.getJob, job.id);
     assert.equal(job.status, 'done');
-    assert.equal(job.manifest.portrait, `assets/player/${job.charId}/portrait.png`);
+    assert.match(job.manifest.portrait, new RegExp(`assets/player/${job.charId}/portrait\\.(webp|png)$`));
     assert.equal(job.manifest.anims.jump.engineState, 3);
     assert.equal(job.manifest.anims.guard.engineState, 10);
     assert.equal(job.manifest.anims.guard.playback, 'hold');
@@ -78,6 +78,12 @@ test('mock pipeline emits guard, idle-anchored jump/hit and split super assets',
 
     const manifest = JSON.parse(await readFile(join(playerDir, job.charId, 'manifest.json'), 'utf8'));
     assert.deepEqual(manifest.superBackground, job.manifest.superBackground);
+    const jumpExtension = manifest.anims.jump.extension || 'png';
+    const superBackgroundExtension = manifest.superBackground.extension || 'png';
+    assert.match(jumpExtension, /^(webp|png)$/);
+    assert.match(superBackgroundExtension, /^(webp|png)$/);
+    assert.ok((await readdir(join(playerDir, job.charId, 'jump'))).every((file) => file.endsWith(`.${jumpExtension}`)));
+    assert.ok((await readdir(join(playerDir, job.charId, 'super-background'))).every((file) => file.endsWith(`.${superBackgroundExtension}`)));
     assert.equal((await readdir(join(playerDir, job.charId, 'jump'))).length, 8);
     assert.equal((await readdir(join(playerDir, job.charId, 'guard'))).length, 8);
     assert.equal((await readdir(join(playerDir, job.charId, 'hit'))).length, 8);

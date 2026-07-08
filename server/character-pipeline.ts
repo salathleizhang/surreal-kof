@@ -14,7 +14,9 @@ import {
   mkdir, writeFile, readFile, readdir, rm, copyFile,
 } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import {
+  basename, dirname, join,
+} from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { PNG } from 'pngjs';
@@ -283,6 +285,92 @@ function runFfmpeg(args) {
     child.on('error', reject);
     child.on('close', (code) => (code === 0 ? resolve() : reject(new Error(stderr.trim() || `ffmpeg exit ${code}`))));
   });
+}
+
+function runCommand(command, args) {
+  return new Promise<void>((resolve, reject) => {
+    const child = spawn(command, args);
+    let stderr = '';
+    child.stderr?.on('data', (c) => { stderr += c; });
+    child.on('error', reject);
+    child.on('close', (code) => (code === 0 ? resolve() : reject(new Error(stderr.trim() || `${command} exit ${code}`))));
+  });
+}
+
+const WEBP_QUALITY = Math.max(1, Math.min(100, Number(process.env.KOF_WEBP_QUALITY) || 82));
+const COMPRESS_RUNTIME_ASSETS = process.env.KOF_COMPRESS_RUNTIME_ASSETS !== '0';
+let webpEncoderPromise = null;
+
+async function findWebpEncoder() {
+  if (!COMPRESS_RUNTIME_ASSETS) return null;
+  if (!webpEncoderPromise) {
+    webpEncoderPromise = (async () => {
+      const candidates = [
+        process.env.CWEBP_BIN,
+        'cwebp',
+        '/opt/homebrew/bin/cwebp',
+        '/usr/local/bin/cwebp',
+      ].filter(Boolean);
+      for (const candidate of candidates) {
+        try {
+          await runCommand(candidate, ['-version']);
+          return candidate;
+        } catch {
+          // Try the next common install location.
+        }
+      }
+      return null;
+    })();
+  }
+  return webpEncoderPromise;
+}
+
+function toWebpPath(filePath) {
+  return filePath.replace(/\.png$/i, '.webp');
+}
+
+async function compressRuntimePng(filePath, log, label) {
+  if (!filePath || !/\.png$/i.test(filePath) || !existsSync(filePath)) return filePath;
+  const encoder = await findWebpEncoder();
+  if (!encoder) {
+    log(`未找到 cwebp，${label} 保留 PNG`);
+    return filePath;
+  }
+
+  const webpPath = toWebpPath(filePath);
+  try {
+    await runCommand(encoder, ['-quiet', '-q', String(WEBP_QUALITY), filePath, '-o', webpPath]);
+    await rm(filePath, { force: true });
+    return webpPath;
+  } catch (err) {
+    await rm(webpPath, { force: true });
+    log(`${label} WebP 压缩失败，保留 PNG：${err.message}`);
+    return filePath;
+  }
+}
+
+async function compressRuntimeFrameSet(framePaths, log, label) {
+  if (!framePaths.length) return { paths: framePaths, extension: 'png' };
+  const encoder = await findWebpEncoder();
+  if (!encoder) {
+    log(`未找到 cwebp，「${label}」帧保留 PNG`);
+    return { paths: framePaths, extension: 'png' };
+  }
+
+  const converted = [];
+  try {
+    for (const framePath of framePaths) {
+      const webpPath = toWebpPath(framePath);
+      await runCommand(encoder, ['-quiet', '-q', String(WEBP_QUALITY), framePath, '-o', webpPath]);
+      converted.push(webpPath);
+    }
+    await Promise.all(framePaths.map((framePath) => rm(framePath, { force: true })));
+    return { paths: converted, extension: 'webp' };
+  } catch (err) {
+    await Promise.all(framePaths.map((framePath) => rm(toWebpPath(framePath), { force: true })));
+    log(`「${label}」帧 WebP 压缩失败，保留 PNG：${err.message}`);
+    return { paths: framePaths, extension: 'png' };
+  }
 }
 
 async function extractFrames(videoPath, outDir) {
@@ -775,9 +863,13 @@ async function stageFrames(job, charDir, workDir, log) {
       }
     }
 
+    const compressed = await compressRuntimeFrameSet(framePaths, log, anim.key);
+    framePaths = compressed.paths;
+
     const manifestAnimation = {
       ...(anim.engineState !== undefined ? { engineState: anim.engineState } : {}),
       dir: `assets/player/${job.charId}/${assetDir}`,
+      ...(compressed.extension !== 'png' ? { extension: compressed.extension } : {}),
       frames: framePaths.length,
       playback: anim.playback,
       matte: anim.matte,
@@ -789,14 +881,19 @@ async function stageFrames(job, charDir, workDir, log) {
     bump();
   });
 
+  log('压缩基础 runtime 素材…');
+  const runtimeBaseAbs = await compressRuntimePng(baseAbs, log, 'base');
+  const portraitAbs = job._portraitAbs || join(charDir, 'portrait.png');
+  const runtimePortraitAbs = await compressRuntimePng(portraitAbs, log, 'portrait');
+
   log('写入 manifest…');
   const manifest = {
     id: job.charId,
     name: (profile.nameEn || job.name).toUpperCase(),
     cn: profile.nameCn || job.name,
     summary: profile.summary || '',
-    base: `assets/player/${job.charId}/base.png`,
-    portrait: `assets/player/${job.charId}/portrait.png`,
+    base: `assets/player/${job.charId}/${basename(runtimeBaseAbs)}`,
+    portrait: `assets/player/${job.charId}/${basename(runtimePortraitAbs)}`,
     anims: manifestAnims,
     superBackground: manifestSuperBackground,
     moves: profile.moves || {},
